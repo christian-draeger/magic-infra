@@ -1,0 +1,6 @@
+schemaVersion: infra/v1alpha1
+applicationId: shop
+services:
+  api:
+    imageRef: example.invalid/shop/api:fixture
+    port: 8080

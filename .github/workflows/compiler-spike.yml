@@ -1,0 +1,106 @@
+name: M0 compiler spike
+
+on:
+  pull_request:
+    paths:
+      - 'spikes/compiler/**'
+      - 'schemas/**'
+      - 'examples/m0/**'
+      - 'tests/**'
+      - '.github/workflows/compiler-spike.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.5'
+          cache-disabled: true
+      - name: Build from empty caches
+        env:
+          GOCACHE: ${{ runner.temp }}/m0-go-cache
+          GOMODCACHE: ${{ runner.temp }}/m0-go-mod
+          GRADLE_USER_HOME: ${{ runner.temp }}/m0-gradle
+        run: python spikes/compiler/package.py "$RUNNER_TEMP/distributions"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions-${{ matrix.os }}
+          path: ${{ runner.temp }}/distributions/
+          if-no-files-found: error
+
+  install-and-check:
+    needs: package
+    if: ${{ !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          java-package: jre
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions-${{ matrix.os }}
+          path: ${{ runner.temp }}/distributions
+      - name: Unpack and test release archives
+        run: |
+          python -m pip install -r tests/requirements.txt
+          package="$RUNNER_TEMP/distributions"
+          install="$RUNNER_TEMP/installed"
+          mkdir "$install"
+          tar -xzf "$package/go.tar.gz" -C "$install"
+          tar -xzf "$package/kotlin.tar.gz" -C "$install"
+          cp "$package/build.json" "$install/build.json"
+          python tests/check_spike.py "$install/m0-compiler-go" "$install/m0-compiler-kotlin/bin/m0-compiler-kotlin"
+      - name: Measure cold process time and memory
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          install="$RUNNER_TEMP/installed"
+          python tests/benchmark_spike.py \
+            "$install/m0-compiler-go" "$install/m0-compiler-kotlin/bin/m0-compiler-kotlin" \
+            --adapter-classpath "$RUNNER_TEMP/distributions/adapter" --output "$install/benchmark.json"
+          {
+            printf '%s\n' '### M0 compiler measurements' '~~~json'
+            cat "$install/build.json" "$install/benchmark.json"
+            printf '%s\n' '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.os }}
+          path: ${{ runner.temp }}/installed/*.json
+          if-no-files-found: error

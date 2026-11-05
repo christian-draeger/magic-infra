@@ -1,0 +1,19 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: api
+containers:
+  api:
+    image: example.invalid/shop/api:fixture
+    variables:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${resources.db.host}:${resources.db.port}/${resources.db.name}
+      SPRING_DATASOURCE_USERNAME: ${resources.db.username}
+      SPRING_DATASOURCE_PASSWORD: ${resources.db.password}
+service:
+  ports:
+    http:
+      port: 8080
+      targetPort: 8080
+resources:
+  db:
+    type: postgres
+    id: primary-db

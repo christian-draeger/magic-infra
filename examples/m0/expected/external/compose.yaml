@@ -1,0 +1,17 @@
+{
+  "name": "shop",
+  "services": {
+    "api": {
+      "env_file": [
+        "./secrets/shop-db-credentials.env"
+      ],
+      "environment": {
+        "SPRING_DATASOURCE_URL": "${SHOP_DB_URL:?set external JDBC URL}"
+      },
+      "expose": [
+        8080
+      ],
+      "image": "example.invalid/shop/api:fixture"
+    }
+  }
+}

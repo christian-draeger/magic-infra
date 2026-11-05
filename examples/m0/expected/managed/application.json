@@ -1,0 +1,57 @@
+{
+  "application": {
+    "id": "shop"
+  },
+  "bindings": [
+    {
+      "contract": "spring.datasource",
+      "resourceId": "primary-db",
+      "serviceId": "api"
+    }
+  ],
+  "provenance": [
+    {
+      "declarationRef": "infra.yaml#/postgres",
+      "findingIds": [
+        "f-datasource",
+        "f-jpa-dep",
+        "f-pg-driver"
+      ],
+      "resourceId": "primary-db"
+    }
+  ],
+  "resources": [
+    {
+      "connection": {
+        "secretRef": "shop-db-credentials"
+      },
+      "deletionPolicy": "retain",
+      "id": "primary-db",
+      "kind": "postgresql",
+      "management": "managed",
+      "settings": {
+        "database": "shop",
+        "storage": {
+          "size": "1Gi"
+        }
+      }
+    }
+  ],
+  "schemaVersion": "application/v1alpha1",
+  "services": [
+    {
+      "build": {
+        "imageRef": "example.invalid/shop/api:fixture",
+        "strategy": "prebuilt"
+      },
+      "id": "api",
+      "runtime": {
+        "port": 8080
+      },
+      "source": {
+        "adapter": "spring-boot",
+        "module": ":app"
+      }
+    }
+  ]
+}
