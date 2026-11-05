@@ -1,0 +1,9 @@
+schemaVersion: infra/v1alpha2
+applicationId: compose-app
+services:
+  compose-app:
+    imageRef: magic-infra-compose-app:fixture
+    port: 8080
+    healthPath: /actuator/health
+resources: {}
+bindings: []

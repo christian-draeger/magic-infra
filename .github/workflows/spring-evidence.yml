@@ -11,6 +11,7 @@ on:
       - 'schemas/application.v1alpha1.schema.json'
       - 'schemas/infra.v1alpha2.schema.json'
       - 'examples/infra/**'
+      - 'examples/compose-app/**'
       - 'schemas/spring-adapter-request.v1alpha1.schema.json'
       - 'tests/**'
       - '*.gradle.kts'
@@ -24,6 +25,7 @@ on:
       - 'schemas/application.v1alpha1.schema.json'
       - 'schemas/infra.v1alpha2.schema.json'
       - 'examples/infra/**'
+      - 'examples/compose-app/**'
       - 'schemas/spring-adapter-request.v1alpha1.schema.json'
       - 'tests/**'
       - '*.gradle.kts'
@@ -55,3 +57,5 @@ jobs:
           python -m pip install -r tests/requirements.txt
           gradle --no-daemon --console=plain :spring-evidence:validatePlugins :spring-evidence:installDist :evidence-check:installDist
           python tests/check_spring_evidence.py
+      - name: Verify the explicit OCI image build and health endpoint
+        run: python tests/check_oci_image.py

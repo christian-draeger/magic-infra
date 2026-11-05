@@ -73,11 +73,13 @@ internal object ApplicationModelResolver {
             "application" to mapOf("id" to id),
             "services" to serviceIds.map { serviceId ->
                 val service = declaredServices.path(serviceId)
+                val runtime = linkedMapOf<String, Any>("port" to service.path("port").asInt())
+                if (service.has("healthPath")) runtime["healthPath"] = service.path("healthPath").asText()
                 mapOf(
                     "id" to serviceId,
                     "source" to mapOf("adapter" to adapterId, "module" to evidenceServices.getValue(serviceId).path("module").asText()),
                     "build" to mapOf("strategy" to "prebuilt", "imageRef" to service.path("imageRef").asText()),
-                    "runtime" to mapOf("port" to service.path("port").asInt()),
+                    "runtime" to runtime,
                 )
             },
             "resources" to resourceIds.map { resourceId -> normalizeResource(resourceId, resources.path(resourceId)) },
