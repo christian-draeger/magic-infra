@@ -6,7 +6,7 @@ versions will follow from tested fixtures.
 
 | Milestone | What we need to prove |
 | --- | --- |
-| M0 · Foundations | Define versioned Evidence, Application Model and Deployment Plan contracts and check them with positive and negative fixtures. Decide who owns generated files and how ambiguous evidence is reported. Complete the [Kotlin vs. Go compiler spike](compiler-language-spike.md) and record the decision before production compiler work. |
+| M0 · Foundations | Define versioned Evidence, Application Model and Deployment Plan contracts and check them with positive and negative fixtures. Decide who owns generated files and how ambiguous evidence is reported. Complete the [Kotlin vs. Go compiler spike](compiler-language-spike.md) and record the decision before production compiler work. Compare the first Application Model fixture with Score before locking the model. |
 | M1 · Spring analysis | Java and Kotlin Spring Boot apps emit repeatable evidence with provenance without booting the app. A database driver on the classpath never authorizes provisioning. |
 | M2 · First end-to-end slice | One Spring app with explicit PostgreSQL intent generates reviewable Docker Compose files. Verify CRUD and persistent storage, stable output on repeat generation, and references to credentials rather than credentials in Git. |
 | M3 · Kubernetes portability | Render the same application model for K3s with CloudNativePG and verify it in a test cluster. Surface missing operator and storage prerequisites, and document differences from Compose. |
@@ -18,3 +18,6 @@ Framework adapters report evidence and uncertainty. An explicit declaration
 determines ownership. The core resolves the application model, and each backend
 checks its target's capabilities before producing a plan and artifacts. Image
 building and deployment stay separate from that compilation path.
+
+See the [product vision and integration priorities](PRODUCT.md#what-to-evaluate-first)
+for the Score analysis and later compatibility experiments.

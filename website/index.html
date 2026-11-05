@@ -34,7 +34,7 @@
       <div class="hero-copy reveal">
         <div class="eyebrow"><span class="status-dot"></span> INFRASTRUCTURE COMPILER <span class="eyebrow-divider"></span> SELF-HOSTED BY DESIGN <span class="eyebrow-line"></span></div>
         <h1 id="hero-title">Your app knows<br/>what it needs.<br/><span class="h1-accent">Your infra<br/>should too<span class="period">.</span></span></h1>
-        <p class="hero-lede"><strong>magic-infra</strong> reads the Spring Boot app you already have. Tell it which services to manage, then review the Compose or Kubernetes files it generates. Run them on your own infrastructure.</p>
+        <p class="hero-lede"><strong>magic-infra</strong> reads the Spring Boot app you already have. Confirm which resources it should manage, then review the generated Compose or Kubernetes files. Run them with the tools you already use.</p>
         <div class="hero-actions"><a class="button button-primary" href="#experience">See the magic <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="currentColor"><path d="M12 .9A11.1 11.1 0 0 0 8.5 22.5c.55.1.76-.24.76-.53v-2.1c-3.1.67-3.75-1.3-3.75-1.3-.5-1.25-1.24-1.58-1.24-1.58-1-.7.08-.68.08-.68 1.12.08 1.7 1.15 1.7 1.15 1 .1 1.69-.68 1.9-.97.1-.73.39-1.22.7-1.5-2.47-.29-5.07-1.24-5.07-5.49 0-1.21.43-2.2 1.14-2.97-.11-.28-.5-1.4.11-2.92 0 0 .94-.3 3.05 1.14a10.62 10.62 0 0 1 5.55 0c2.12-1.44 3.05-1.14 3.05-1.14.61 1.52.22 2.64.1 2.92.72.77 1.15 1.76 1.15 2.97 0 4.26-2.61 5.19-5.1 5.48.4.35.75 1.02.75 2.06v3.05c0 .3.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg> Follow the build</a></div>
         <p class="hero-note"><span class="tiny-spark">✳</span> Product preview <span class="line-dot">·</span> Compiler in planning</p>
       </div>
@@ -101,7 +101,7 @@ spring:
       <div class="arch-notes"><div class="arch-note reveal"><span class="note-symbol">◇</span><h3>Evidence, not assumptions.</h3><p>The adapter reports what it saw—and what it couldn't know. Dependencies aren't permission to provision.</p></div><div class="arch-note reveal" style="--delay:.08s"><span class="note-symbol">◎</span><h3>Intent, not YAML soup.</h3><p>A shared application model describes resources, bindings, ownership and lifecycles—not Kubernetes internals.</p></div><div class="arch-note reveal" style="--delay:.16s"><span class="note-symbol">↗</span><h3>Portable, not identical.</h3><p>Each backend checks its capabilities. A single VPS doesn't suddenly become highly available.</p></div></div>
     </section>
 
-    <section class="section ownership-section" aria-labelledby="ownership-title"><div class="container ownership-grid"><div class="ownership-copy reveal"><p class="overline"><span>03 / OWN THE OUTPUT</span></p><h2 id="ownership-title">Generate it once.<br/><em>Own it for good.</em></h2><p>Generated infrastructure should be a starting point you can understand and a system you can keep operating—whether or not you ever run magic-infra again.</p><div class="ownership-list"><div><span class="own-icon">↳</span><span>Generated, readable Compose and Kubernetes artifacts</span></div><div><span class="own-icon">↳</span><span>Git-friendly diff and review workflow</span></div><div><span class="own-icon">↳</span><span>Explicit resource ownership and retention</span></div><div><span class="own-icon">↳</span><span>Manual takeover as a first-class escape hatch</span></div></div><p class="ownership-caveat">* Safe ownership transfer and lifecycle workflows are roadmap features, not released functionality.</p></div><div class="ownership-art reveal" style="--delay:.12s" aria-hidden="true"><div class="art-grid"></div><div class="art-ring r1"></div><div class="art-ring r2"></div><div class="art-ring r3"></div><div class="art-center"><span>✳</span><strong>YOUR<br/>INFRA</strong></div><div class="art-pill pill-1">compose.yaml <span>✓</span></div><div class="art-pill pill-2">k8s/ <span>✓</span></div><div class="art-pill pill-3">git diff <span>✓</span></div><div class="art-coordinate">OWNERSHIP: 100% YOU</div></div></div></section>
+    <section class="section ownership-section" aria-labelledby="ownership-title"><div class="container ownership-grid"><div class="ownership-copy reveal"><p class="overline"><span>03 / OWN THE OUTPUT</span></p><h2 id="ownership-title">Generate it once.<br/><em>Own it for good.</em></h2><p>Review the files in Git, deploy them through your existing workflow, and keep operating them without a magic-infra runtime. You still own backups, updates and availability.</p><div class="ownership-list"><div><span class="own-icon">↳</span><span>Generated, readable Compose and Kubernetes artifacts</span></div><div><span class="own-icon">↳</span><span>Git-friendly diff and review workflow</span></div><div><span class="own-icon">↳</span><span>Explicit resource ownership and retention</span></div><div><span class="own-icon">↳</span><span>A documented handover for stateful resources</span></div></div><p class="ownership-caveat">* Safe ownership transfer and lifecycle workflows are roadmap features, not released functionality.</p></div><div class="ownership-art reveal" style="--delay:.12s" aria-hidden="true"><div class="art-grid"></div><div class="art-ring r1"></div><div class="art-ring r2"></div><div class="art-ring r3"></div><div class="art-center"><span>✳</span><strong>YOUR<br/>INFRA</strong></div><div class="art-pill pill-1">compose.yaml <span>✓</span></div><div class="art-pill pill-2">k8s/ <span>✓</span></div><div class="art-pill pill-3">git diff <span>✓</span></div><div class="art-coordinate">OWNERSHIP: 100% YOU</div></div></div></section>
 
     <section class="section support container" id="support" aria-labelledby="support-title"><div class="section-intro reveal"><p class="overline"><span>04 / THE STACK</span><span>OPINIONATED ON PURPOSE</span></p><h2 id="support-title">Start focused.<br/><em>Grow without rewrites.</em></h2><p>Spring Boot with Gradle and PostgreSQL first. Get the same app running on a single Compose host and on K3s before expanding to more resources and frameworks.</p></div>
       <div class="support-grid">
@@ -116,35 +116,91 @@ spring:
 
     <section class="section comparison container" id="comparison" aria-labelledby="comparison-title">
       <div class="section-intro reveal">
-        <p class="overline"><span>05 / WHERE IT FITS</span><span>APPLICATION-AWARE INFRASTRUCTURE</span></p>
+        <p class="overline"><span>05 / WHERE IT FITS</span><span>THE TOOLCHAIN</span></p>
         <h2 id="comparison-title">Keep your framework.<br/><em>Take the files.</em></h2>
-        <p>magic-infra is for teams that already have an app and want to turn its infrastructure needs into files they can run, review and hand over.</p>
+        <p>magic-infra aims to fill the gap between an existing Spring app and your deployment workflow. It explains what the app needs, asks you who should manage it, and produces files you can take over.</p>
       </div>
       <div class="comparison-grid reveal">
-        <article class="comparison-card comparison-featured">
-          <span class="comparison-label">THE MAGIC-INFRA APPROACH</span>
-          <h3>Start from the app you have.</h3>
-          <p>Use Spring signals to suggest resources, declare who manages them, and compile the result to Compose or Kubernetes.</p>
-          <a href="#experience">Try the workflow <span aria-hidden="true">↗</span></a>
-        </article>
-        <article class="comparison-card">
-          <span class="comparison-label">CLOSEST OVERLAP / PORTABLE WORKLOADS</span>
-          <h3>Score</h3>
-          <p>Write a portable workload spec and generate Compose or Kubernetes manifests with target provisioners. magic-infra adds framework evidence and a plan that explains resource decisions.</p>
-          <a href="https://docs.score.dev/docs/" target="_blank" rel="noopener noreferrer">Score docs <span aria-hidden="true">↗</span></a>
-        </article>
-        <article class="comparison-card">
-          <span class="comparison-label">INFRASTRUCTURE FROM CODE</span>
-          <h3>Encore</h3>
-          <p>Declare infrastructure in Go or TypeScript using Encore’s SDK. Its managed platform is optional, and it supports self-hosting. magic-infra starts with an existing Spring app and generates the deployment files.</p>
-          <a href="https://encore.dev/docs/platform/introduction" target="_blank" rel="noopener noreferrer">Encore docs <span aria-hidden="true">↗</span></a>
-        </article>
-        <article class="comparison-card">
-          <span class="comparison-label">LOCAL DEVELOPMENT</span>
-          <h3>Tilt</h3>
-          <p>Configure a Tiltfile to build and live-update Kubernetes or Compose services during development. The files generated by magic-infra could be inputs to that workflow.</p>
-          <a href="https://docs.tilt.dev/" target="_blank" rel="noopener noreferrer">Tilt docs <span aria-hidden="true">↗</span></a>
-        </article>
+        <section class="comparison-group" aria-labelledby="alternatives-title">
+          <p class="comparison-label"><span aria-hidden="true">01</span> / ALTERNATIVES</p>
+          <h3 id="alternatives-title">App SDKs &amp; IaC</h3>
+          <details class="tool-detail">
+            <summary><span><strong>Nitric</strong><small>Infrastructure via an app SDK</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You want to declare resources in application code and map them to deployment providers, including custom ones.</p>
+              <p><strong>Difference:</strong> SDK calls express intent directly. magic-infra would work from existing Spring conventions and ask about ambiguous signals, without requiring Nitric-style declarations in app code.</p>
+              <a href="https://nitric.io/docs/get-started/foundations/infrastructure">Nitric infrastructure docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+          <details class="tool-detail">
+            <summary><span><strong>Encore</strong><small>Integrated Go and TypeScript backend</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You want an integrated Go or TypeScript framework with local infrastructure. The managed platform is optional; Encore also documents Docker self-hosting.</p>
+              <p><strong>Difference:</strong> Encore derives its model from its own primitives. magic-infra starts with the Spring app you have and plans the services and bindings for your Compose or Kubernetes target.</p>
+              <a href="https://encore.dev/docs/platform/introduction">Encore platform and self-hosting docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+          <details class="tool-detail">
+            <summary><span><strong>SST</strong><small>Programmable infrastructure in TypeScript</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You want to model a custom topology in TypeScript using a broad provider ecosystem.</p>
+              <p><strong>Difference:</strong> SST gives you control over the resources you define and tracks their state. magic-infra would suggest common resources from the app and generate deployment files, with a narrower supported catalog.</p>
+              <a href="https://sst.dev/docs/providers/">SST provider docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+        </section>
+        <section class="comparison-group" aria-labelledby="workflow-title">
+          <p class="comparison-label"><span aria-hidden="true">02</span> / WORKFLOW</p>
+          <h3 id="workflow-title">Specs &amp; dev loops</h3>
+          <details class="tool-detail">
+            <summary><span><strong>Score</strong><small>Portable workload specification</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Overlap:</strong> Score starts from a workload spec and can target Compose or Kubernetes. magic-infra starts from framework evidence and adds explicit ownership and a plan.</p>
+              <p><strong>Possible fit:</strong> Export what maps to Score. Its implementations can provision resources during generation, so any reuse must preserve our separation between planning and applying.</p>
+              <a href="https://docs.score.dev/docs/how-to/create-a-score-implementation/">Score implementation docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+          <details class="tool-detail">
+            <summary><span><strong>Tilt</strong><small>Fast local feedback for containers</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You already have Compose or Kubernetes files and want fast rebuilds, live updates and logs while developing.</p>
+              <p><strong>Possible fit:</strong> Point a Tiltfile at the generated artifacts. magic-infra describes what the app needs; Tilt takes care of the local feedback loop.</p>
+              <a href="https://docs.tilt.dev/docker_compose.html">Tilt and Docker Compose docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+        </section>
+        <section class="comparison-group" aria-labelledby="operations-title">
+          <p class="comparison-label"><span aria-hidden="true">03</span> / OPERATIONS</p>
+          <h3 id="operations-title">Deploy &amp; provision</h3>
+          <details class="tool-detail">
+            <summary><span><strong>Coolify</strong><small>Self-hosted deployment dashboard</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You want a web UI to deploy and manage apps on your servers. Coolify can deploy Compose from Git.</p>
+              <p><strong>Possible fit:</strong> Let magic-infra produce the files and Coolify deploy them. Verify proxy configuration, secrets and persistent volumes first.</p>
+              <a href="https://coolify.io/docs/applications/builds/docker-compose">Coolify Compose docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+          <details class="tool-detail">
+            <summary><span><strong>Dokploy</strong><small>Docker and Swarm deployment workflows</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You want to manage Docker deployments through a web UI. Dokploy has separate Compose and Swarm modes.</p>
+              <p><strong>Possible fit:</strong> Test generated files in Compose mode. Swarm has different deployment semantics and would need separate support.</p>
+              <a href="https://docs.dokploy.com/docs/core/docker-compose">Dokploy Compose docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+          <details class="tool-detail">
+            <summary><span><strong>Pulumi</strong><small>Provision and own external infrastructure</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
+            <div class="tool-detail-body">
+              <p><strong>Good fit:</strong> You need programmable infrastructure for cloud networking, access policies or managed services.</p>
+              <p><strong>Possible fit:</strong> Pulumi provisions and owns PostgreSQL. magic-infra would bind the app to that external database by endpoint and secret reference, without managing it.</p>
+              <a href="https://www.pulumi.com/docs/iac/concepts/stacks/">Pulumi stacks and outputs docs <span aria-hidden="true">↗</span></a>
+            </div>
+          </details>
+        </section>
+      </div>
+      <div class="comparison-footer">
+        <p>These are design comparisons and integration ideas. The magic-infra compiler is in planning.</p>
+        <a href="https://github.com/christian-draeger/magic-infra/blob/main/docs/PRODUCT.md">Read the product vision <span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
