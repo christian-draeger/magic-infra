@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Path
 
 internal const val REQUEST_VERSION = "spring-adapter-request/v1alpha1"
+private const val TESTED_BOOT_VERSION = "3.5.16"
 private val json = GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
 
 internal data class AnalysisRequest(
@@ -83,11 +84,13 @@ internal fun evidence(request: AnalysisRequest, project: Path, classFiles: Set<F
         throw ProtocolFailure("MI_SPRING_AMBIGUOUS_COMPONENT", "Supply one resolved version per recognized component.")
     }
 
-    val diagnostics = if (bootVersion == null) listOf(mapOf(
-        "code" to "MI_SPRING_BOOT_RUNTIME_UNKNOWN",
-        "severity" to "warning",
-        "message" to "Provide a runtime snapshot with one resolved Spring Boot component to identify its version.",
-    )) else emptyList()
+    val compatibilityWarning = when (bootVersion) {
+        null -> diagnostic("MI_SPRING_BOOT_RUNTIME_UNKNOWN", "warning",
+            "Provide a runtime snapshot with one resolved Spring Boot component to identify its version.")
+        TESTED_BOOT_VERSION -> null
+        else -> diagnostic("MI_SPRING_BOOT_RUNTIME_UNVERIFIED", "warning",
+            "This runtime is outside the tested Spring Boot matrix. ConfigData analysis uses Boot $TESTED_BOOT_VERSION.")
+    }
 
     val application = linkedMapOf(
         "id" to request.applicationId,
@@ -113,6 +116,6 @@ internal fun evidence(request: AnalysisRequest, project: Path, classFiles: Set<F
         ),
         "services" to listOf(mapOf("id" to request.applicationId, "module" to request.module, "buildSystem" to "gradle")),
         "findings" to findings + configuration.findings + bytecode?.findings.orEmpty(),
-        "diagnostics" to diagnostics + configuration.diagnostics + bytecode?.diagnostics.orEmpty(),
+        "diagnostics" to listOfNotNull(compatibilityWarning) + configuration.diagnostics + bytecode?.diagnostics.orEmpty(),
     )) + "\n"
 }

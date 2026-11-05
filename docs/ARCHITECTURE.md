@@ -34,6 +34,8 @@ validates the schema and references, and treats diagnostics and unresolved
 questions as input to the next step. Evidence must not contain credentials.
 The [Spring adapter protocol](SPRING-EVIDENCE.md) documents the executable
 handoff and the Gradle task.
+The core's [relational rules](EVIDENCE-RULES.md) explain suggestions and
+conflicts with finding IDs and a rule version.
 
 ## Core: Application Model (intermediate representation)
 
