@@ -42,11 +42,35 @@ version with status `3`, and input I/O failure with status `1`.
 ## Resolve Evidence and intent
 
 The declaration supplies ownership and retention. Evidence can suggest a
-binding and explain incompatibilities. The resolver will stop when an
+binding and explain incompatibilities. The resolver stops when an
 effective configuration or an incompatible driver observation conflicts with
 the declared resource. A matching driver may coexist with unused drivers.
 Empty resources and bindings keep ownership undecided for an observed
 database. A database-dependent plan needs an explicit binding.
+
+```sh
+compiler/evidence/build/install/evidence-check/bin/evidence-check \
+  resolve examples/m0/evidence.json examples/infra/managed.yaml
+```
+
+The command emits a canonical `application/v1alpha1` document. Each
+resource retains a document-relative declaration pointer and the IDs of its contributing
+findings. Managed resources carry storage intent. External resources carry
+an endpoint reference and remain external in the model. Invalid
+references, missing bindings and vendor conflicts stop resolution before
+any model is emitted.
+
+The Spring adapter currently uses the module's application ID as its
+single service ID. The [Java fixture declaration](../examples/infra/spring-java.yaml)
+shows the IDs used by the real Gradle adapter. Its image reference is a
+placeholder for model validation.
+
+```sh
+gradle -p examples/spring-evidence :java-app:springEvidence
+compiler/evidence/build/install/evidence-check/bin/evidence-check resolve \
+  examples/spring-evidence/java-app/build/magic-infra/evidence.json \
+  examples/infra/spring-java.yaml
+```
 
 ## Migrate the M0 spike fixture
 

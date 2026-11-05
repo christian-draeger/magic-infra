@@ -22,4 +22,5 @@ application {
 tasks.processResources {
     from(rootProject.file("schemas/evidence.v1alpha1.schema.json"))
     from(rootProject.file("schemas/infra.v1alpha2.schema.json"))
+    from(rootProject.file("schemas/application.v1alpha1.schema.json"))
 }

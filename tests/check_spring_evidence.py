@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import yaml
 from jsonschema import ValidationError
 
 from test_contracts import ROOT, read_json, validate_schema
@@ -191,6 +192,76 @@ def check_infra_declarations():
     historical = invoke(validator + [ROOT / "examples/m0/infra.yaml"])
     rejected(historical, 3, "MI_INFRA_VERSION", "infra/v1alpha2")
     print("Managed/external infra declarations, parser safety and reference checks passed.")
+
+
+def check_application_model():
+    base = ROOT / "examples/m0"
+    evidence_path = base / "evidence.json"
+    evidence = read_json(evidence_path)
+    directory = ROOT / "examples/infra"
+    command = [READER, "resolve"]
+    for mode in ("managed", "external"):
+        declaration = directory / f"{mode}.yaml"
+        output = success(invoke(command + [evidence_path, declaration]))
+        assert output == success(invoke(command + ["-", declaration], json_bytes(evidence)))
+        actual = json.loads(output)
+        validate_schema(actual, "application")
+        expected = read_json(base / "expected" / mode / "application.json")
+        expected["provenance"][0]["declarationRef"] = "#/resources/primary-db"
+        assert actual == expected, actual
+        if mode == "external":
+            assert "storage" not in actual["resources"][0]["settings"]
+            assert actual["resources"][0]["connection"]["endpointRef"] == "SHOP_DB_URL"
+        library = READER.parent.parent / "lib"
+        java = ["java", "-Dline.separator=\r\n", "-cp", os.pathsep.join(str(path) for path in sorted(library.glob("*.jar"))),
+                "dev.magicinfra.compiler.evidence.EvidenceMainKt"]
+        assert output == success(invoke(java + ["resolve", evidence_path, declaration]))
+
+    managed = yaml.safe_load((directory / "managed.yaml").read_text())
+
+    def resolve_declaration(document):
+        return invoke(command + [evidence_path, "-"], yaml.safe_dump(document).encode())
+
+    rejected(resolve_declaration({**managed, "applicationId": "different"}), 2, "MI_APPLICATION_ID_MISMATCH",
+             "/applicationId")
+    rejected(resolve_declaration({**managed, "resources": {}, "bindings": []}), 4,
+             "MI_APPLICATION_BINDING_REQUIRED", "api")
+    rejected(resolve_declaration({**managed, "bindings": []}), 2, "MI_APPLICATION_ORPHAN_RESOURCE",
+             "/resources/primary-db")
+    mismatched_services = {**managed, "services": {"worker": managed["services"]["api"]}, "resources": {}, "bindings": []}
+    rejected(resolve_declaration(mismatched_services), 2, "MI_APPLICATION_SERVICE_MISMATCH", "/services")
+    mysql = {**evidence["findings"][1], "implementation": "mysql"}
+    conflict = {**evidence, "findings": [mysql]}
+    rejected(invoke(command + ["-", directory / "managed.yaml"], json_bytes(conflict)), 4,
+             "MI_APPLICATION_VENDOR_CONFLICT", "api", "mysql", "postgresql")
+    for overlong, source in [
+        ({**evidence, "adapter": {**evidence["adapter"], "id": "a" * (512 * 1024)}}, "/adapter/id"),
+        ({**evidence, "services": [{**evidence["services"][0], "module": "a" * 241}]}, "module for service api"),
+    ]:
+        rejected(invoke(command + ["-", directory / "managed.yaml"], json_bytes(overlong)), 2,
+                 "MI_APPLICATION_PROVENANCE_LENGTH", source)
+
+    multi = copy.deepcopy(managed)
+    multi["services"]["worker"] = {"imageRef": "example.invalid/shop/worker:fixture", "port": 8081}
+    multi["bindings"].append({"serviceId": "worker", "resourceId": "primary-db"})
+    service = {"id": "worker", "module": ":worker", "buildSystem": "gradle"}
+    finding = {**evidence["findings"][1], "id": "f-worker-driver", "serviceId": "worker"}
+    multi_evidence = {**evidence, "services": [service, *evidence["services"]],
+                      "findings": [finding, *reversed(evidence["findings"])]}
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "evidence.json"
+        path.write_bytes(json_bytes(multi_evidence))
+        output = success(invoke(command + [path, "-"], yaml.safe_dump(multi).encode()))
+        multi["services"] = dict(reversed(list(multi["services"].items())))
+        multi["bindings"].reverse()
+        path.write_bytes(json_bytes({**multi_evidence, "services": list(reversed(multi_evidence["services"])),
+                                     "findings": list(reversed(multi_evidence["findings"]))}))
+        assert output == success(invoke(command + [path, "-"], yaml.safe_dump(multi, sort_keys=False).encode()))
+        actual = json.loads(output)
+        validate_schema(actual, "application")
+        assert [entry["serviceId"] for entry in actual["bindings"]] == ["api", "worker"]
+        assert actual["provenance"][0]["findingIds"] == ["f-datasource", "f-jpa-dep", "f-pg-driver", "f-worker-driver"]
+    print("Application Model normalization, ownership, conflicts and canonical output checks passed.")
 
 
 def check_config():
@@ -388,6 +459,13 @@ def check_bytecode(gradle):
         assert diagnostics["MI_SPRING_BYTECODE_CONDITIONAL_BEAN_UNKNOWN"]["source"] == bean["source"]
         if language == "java":
             assert diagnostics["MI_SPRING_BYTECODE_PROPERTY_SOURCE_UNKNOWN"]["source"]["reference"] == "example.JavaDatabase"
+            declaration = ROOT / "examples/infra/spring-java.yaml"
+            model = json.loads(success(invoke([READER, "resolve", path, declaration])))
+            validate_schema(model, "application")
+            assert model["application"]["id"] == "java-app"
+            assert model["services"][0]["source"]["module"] == ":java-app"
+            assert model["resources"][0]["management"] == "external"
+            assert "f-config-url" in model["provenance"][0]["findingIds"]
     print("Java/Kotlin JVM annotation, conditional bean and provenance checks passed.")
 
 
@@ -426,6 +504,7 @@ if __name__ == "__main__":
     check_config()
     check_relational_rules()
     check_infra_declarations()
+    check_application_model()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)

@@ -1,0 +1,17 @@
+schemaVersion: infra/v1alpha2
+applicationId: java-app
+services:
+  java-app:
+    imageRef: example.invalid/magic-infra/java-app:fixture
+    port: 8080
+resources:
+  primary-db:
+    kind: postgresql
+    management: external
+    deletionPolicy: retain
+    database: shop
+    secretRef: shop-db-credentials
+    endpointRef: SHOP_DB_URL
+bindings:
+  - serviceId: java-app
+    resourceId: primary-db

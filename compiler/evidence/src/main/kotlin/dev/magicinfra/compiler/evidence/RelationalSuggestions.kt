@@ -23,7 +23,13 @@ internal enum class DatabaseVendor(val id: String) {
     }
 }
 
-internal data class ExternalDatabase(val serviceId: String, val vendor: DatabaseVendor)
+internal enum class DatabaseManagement { MANAGED, EXTERNAL }
+
+internal data class DeclaredDatabase(
+    val serviceId: String,
+    val vendor: DatabaseVendor,
+    val management: DatabaseManagement,
+)
 
 internal enum class Resolution {
     SUGGESTED, DECLARED, CONFLICTED,
@@ -58,17 +64,18 @@ private fun displayIdentifier(id: String): String {
     } + "\""
 }
 
-internal fun suggestRelational(evidence: JsonNode, external: ExternalDatabase? = null): List<RelationalSuggestion> {
+internal fun suggestRelational(evidence: JsonNode, declarations: List<DeclaredDatabase> = emptyList()): List<RelationalSuggestion> {
     val services = evidence.path("services").map { it.path("id").asText() }.sorted()
-    if (external != null && external.serviceId !in services) {
-        throw EvidenceRejected("MI_EVIDENCE_EXPLAIN_SERVICE", "Name an existing service when declaring an external database.")
+    val declaredByService = declarations.associateBy { it.serviceId }
+    if (declaredByService.keys.any { it !in services } || declaredByService.size != declarations.size) {
+        throw EvidenceRejected("MI_EVIDENCE_EXPLAIN_SERVICE", "Declare at most one database for each existing service.")
     }
     val byService = evidence.path("findings").filter {
         it.path("capability").asText() == CAPABILITY && it.path("kind").asText() != "declaration"
     }.groupBy { it.path("serviceId").asText() }
     return services.mapNotNull { serviceId ->
         val findings = byService[serviceId].orEmpty()
-        val declared = external?.takeIf { it.serviceId == serviceId }?.vendor
+        val declared = declaredByService[serviceId]
         if (findings.isEmpty() && declared == null) return@mapNotNull null
         assess(serviceId, findings, declared)
     }
@@ -77,11 +84,11 @@ internal fun suggestRelational(evidence: JsonNode, external: ExternalDatabase? =
 private fun assess(
     serviceId: String,
     findings: List<JsonNode>,
-    declared: DatabaseVendor?,
+    declared: DeclaredDatabase?,
 ): RelationalSuggestion {
     val observed = findings.filter { it.path("certainty").asText() == "observed" }
     val drivers = observed.vendors("dependency")
-    val selected = observed.vendors("configuration") + listOfNotNull(declared?.id)
+    val selected = observed.vendors("configuration") + listOfNotNull(declared?.vendor?.id)
     val selection = selected.singleOrNull()
     val conflicted = selected.size > 1 ||
         (selection != null && drivers.isNotEmpty() && selection !in drivers) ||
@@ -95,9 +102,12 @@ private fun assess(
             "MI_RELATIONAL_VENDOR_CONFLICT",
             "Conflicting database vendors: ${displayVendors(selected + drivers)}. Resolve the binding before generating infrastructure.",
             findingIds)
-        declared != null -> RelationalSuggestion(serviceId, Resolution.DECLARED, declared,
+        declared?.management == DatabaseManagement.EXTERNAL -> RelationalSuggestion(serviceId, Resolution.DECLARED, declared.vendor,
             "MI_RELATIONAL_EXTERNAL_DECLARED",
             "The user declared an external database. Use an existing binding.", findingIds)
+        declared != null -> RelationalSuggestion(serviceId, Resolution.DECLARED, declared.vendor,
+            "MI_RELATIONAL_MANAGED_DECLARED",
+            "The user declared a managed database with explicit retention.", findingIds)
         vendor == DatabaseVendor.POSTGRESQL && jpa -> RelationalSuggestion(serviceId, Resolution.SUGGESTED, vendor,
             "MI_RELATIONAL_POSTGRESQL_JPA",
             "JPA and PostgreSQL observations suggest a PostgreSQL binding. Ownership requires an explicit declaration.",

@@ -49,7 +49,8 @@ bindings between them. Resources carry stable logical IDs, type, ownership,
 and retention intent. A binding describes how a service uses a resource.
 The model can refer to an image or a secret by reference and link decisions
 back to findings and declarations. It carries no target-specific YAML or
-secret values.
+secret values. The [resolver command](INFRA-DECLARATION.md#resolve-evidence-and-intent)
+emits this portable model.
 
 ## Core → Backend: target planning and rendering
 
