@@ -9,6 +9,7 @@ dependencies {
     implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.16"))
     implementation("org.springframework.boot:spring-boot")
     implementation("org.yaml:snakeyaml")
+    implementation("org.ow2.asm:asm:9.9.1")
 }
 
 kotlin {

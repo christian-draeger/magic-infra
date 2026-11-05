@@ -11,15 +11,19 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.result.ResolvedVariantResult
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
 import java.nio.file.Files
 
 private const val RESOURCE_ROOT = "src/main/resources"
@@ -39,6 +43,18 @@ class SpringEvidencePlugin : Plugin<Project> {
                 it.coordinates.set(project.configurations.getByName("runtimeClasspath")
                     .incoming.resolutionResult.rootComponent.map(::resolvedCoordinates))
                 it.projectDirectory.set(project.layout.projectDirectory)
+                it.bytecode.set(project.providers.gradleProperty("magicInfra.bytecode").map { value ->
+                    value.toBooleanStrictOrNull()
+                        ?: throw GradleException("MI_SPRING_BYTECODE_OPTION: Set -PmagicInfra.bytecode to true or false.")
+                }.orElse(false))
+                if (it.bytecode.get()) {
+                    val classes = project.extensions.getByType(SourceSetContainer::class.java)
+                        .named(SourceSet.MAIN_SOURCE_SET_NAME).map { source -> source.output.classesDirs }
+                    it.dependsOn(classes)
+                    it.classFiles.from(classes.map { outputs ->
+                        outputs.asFileTree.matching { pattern -> pattern.include("**/*.class") }
+                    })
+                }
                 it.output.set(project.layout.buildDirectory.file("magic-infra/evidence.json"))
             }
             project.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
@@ -56,6 +72,8 @@ abstract class SpringEvidenceTask : DefaultTask() {
     @get:Input abstract val profiles: ListProperty<String>
     @get:Input abstract val coordinates: ListProperty<String>
     @get:Internal abstract val projectDirectory: DirectoryProperty
+    @get:Input abstract val bytecode: Property<Boolean>
+    @get:InputFiles abstract val classFiles: ConfigurableFileCollection
     @get:OutputFile abstract val output: RegularFileProperty
 
     @TaskAction
@@ -63,7 +81,7 @@ abstract class SpringEvidenceTask : DefaultTask() {
         val request = AnalysisRequest(applicationId.get(), module.get(), language.get(), profiles.get(),
             listOf(RESOURCE_ROOT), coordinates.get())
         val document = try {
-            evidence(request, projectDirectory.get().asFile.toPath())
+            evidence(request, projectDirectory.get().asFile.toPath(), classFiles.files.takeIf { bytecode.get() })
         } catch (failure: ProtocolFailure) {
             val hint = if (failure.code == "MI_SPRING_APPLICATION_ID") {
                 " Use -PmagicInfra.applicationId=shop to override the module name."
