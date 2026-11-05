@@ -32,6 +32,8 @@ For example, a PostgreSQL driver on the classpath is an observed fact. It
 suggests a database binding; it doesn't authorize creating one. The compiler
 validates the schema and references, and treats diagnostics and unresolved
 questions as input to the next step. Evidence must not contain credentials.
+The [Spring adapter protocol](SPRING-EVIDENCE.md) documents the executable
+handoff and the Gradle task.
 
 ## Core: Application Model (intermediate representation)
 

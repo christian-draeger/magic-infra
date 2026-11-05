@@ -10,6 +10,7 @@ Kubernetes/K3s follows using the same application model.
 - [Explore the product preview](https://christian-draeger.github.io/magic-infra/)
 - [Read the product vision and ecosystem comparison](docs/PRODUCT.md)
 - [Read the engineering roadmap](docs/ROADMAP.md)
+- [Try the Spring Evidence adapter](docs/SPRING-EVIDENCE.md)
 - [Run the contract checks and contribute](CONTRIBUTING.md)
 - [Kotlin vs. Go compiler decision](docs/compiler-language-spike.md)
 

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "spring-adapter-request/v1alpha1",
+  "applicationId": "shop",
+  "module": ":api",
+  "language": "kotlin",
+  "profiles": ["dev"],
+  "sourceRoots": ["src/main/resources"],
+  "dependencies": ["org.postgresql:postgresql:42.7.8"]
+}
