@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -14,8 +15,35 @@ FIXTURE = ROOT / "examples/compose-app"
 READER = ROOT / "compiler/evidence/build/install/evidence-check/bin/evidence-check"
 
 
-def command(*args, **kwargs):
-    return subprocess.run(args, check=True, text=True, capture_output=True, timeout=300, **kwargs).stdout
+def command(*args, timeout=300, **kwargs):
+    return subprocess.run(args, check=True, text=True, capture_output=True, timeout=timeout, **kwargs).stdout
+
+
+def local_docker():
+    host = command("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}").strip()
+    if not host.startswith("unix://"):
+        raise SystemExit("Select a local Docker context backed by a Unix socket before running the OCI smoke test.")
+    return ("docker", "--host", host)
+
+
+def remove_fixture(docker, container_id, image):
+    cleanup = []
+    if container_id is not None:
+        cleanup.append(("container", ("rm", "--force", container_id)))
+    if image is not None:
+        cleanup.append(("image", ("image", "rm", image)))
+    failures = []
+    for kind, arguments in cleanup:
+        try:
+            command(*docker, *arguments, timeout=30)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            failures.append(kind)
+    if failures:
+        message = "Could not remove smoke test " + " and ".join(failures) + "."
+        original = sys.exception()
+        if original is None:
+            raise RuntimeError(message)
+        original.add_note(message)
 
 
 def await_health(url):
@@ -33,6 +61,7 @@ def await_health(url):
 
 
 def main():
+    docker = local_docker()
     gradle = ("gradle", "--no-daemon", "--console=plain", "-p", str(FIXTURE))
     analysis = command(*gradle, "springEvidence")
     for task in ("bootJar", "bootBuildImage", "bootRun", "compileKotlin"):
@@ -50,22 +79,18 @@ def main():
     health = service["runtime"]["healthPath"]
 
     command(*gradle, "bootJar")
+    built_image = container_id = None
     try:
-        command("docker", "build", "--tag", image, str(FIXTURE))
-        command("docker", "run", "--detach", "--name", container, "--publish",
-                f"127.0.0.1::{port}", service["build"]["imageRef"])
-        endpoint = command("docker", "port", container, f"{port}/tcp").strip()
+        command(*docker, "build", "--builder", "default", "--tag", image, str(FIXTURE))
+        built_image = image
+        container_id = command(*docker, "create", "--name", container, "--publish",
+                               f"127.0.0.1::{port}", service["build"]["imageRef"]).strip()
+        command(*docker, "start", container_id)
+        endpoint = command(*docker, "port", container_id, f"{port}/tcp").strip()
         assert endpoint.startswith("127.0.0.1:"), endpoint
-        try:
-            await_health(f"http://{endpoint}{health}")
-        except AssertionError:
-            subprocess.run(("docker", "logs", container), timeout=30)
-            raise
+        await_health(f"http://{endpoint}{health}")
     finally:
-        subprocess.run(("docker", "rm", "--force", container), stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, timeout=30)
-        subprocess.run(("docker", "image", "rm", image), stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, timeout=30)
+        remove_fixture(docker, container_id, built_image)
     print("Spring analysis stayed separate from OCI build. The resolved image and health metadata worked in Docker.")
 
 
@@ -73,4 +98,5 @@ if __name__ == "__main__":
     try:
         main()
     except subprocess.CalledProcessError as failure:
-        raise SystemExit(failure.stdout + failure.stderr) from failure
+        notes = "\n".join(getattr(failure, "__notes__", []))
+        raise SystemExit(failure.stdout + failure.stderr + notes) from failure

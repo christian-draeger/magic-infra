@@ -7,9 +7,9 @@ Backends consume the facts without depending on Spring or a build provider.
 
 | Image source | Fit for the first slice |
 | --- | --- |
-| Existing image | Use its tag for local iteration or a digest for a reproducible deployment reference. |
-| Dockerfile | The fixture builds a Spring Boot executable JAR separately and copies it into a digest-pinned JRE image. This makes the runtime base and startup command reviewable. |
-| Cloud Native Buildpacks | Spring Boot's explicit `bootBuildImage` task is another way to package an app. Pass the resulting image reference through the same declaration. |
+| Existing image | Use its tag for local iteration or its digest for a reproducible deployment reference. The registry must retain that digest and the target must be able to pull it. |
+| Dockerfile | The fixture builds a Spring Boot executable JAR separately and copies it into a digest-pinned JRE image. The app team owns the base updates and build recipe. |
+| Cloud Native Buildpacks | Spring Boot's explicit `bootBuildImage` task delegates packaging to a builder. Pin the builder and run image when repeatability matters, and pass the resulting image reference through the same declaration. |
 
 The analysis task can read dependencies and configuration without building
 an image. Image build modes in `infra.yaml` are rejected. The build,
@@ -31,7 +31,8 @@ docker run --rm -p 127.0.0.1:8080:8080 magic-infra-compose-app:fixture
 Check `http://127.0.0.1:8080/actuator/health`. The
 [fixture declaration](../examples/compose-app/infra.yaml) records the same
 image and runtime settings. `python tests/check_oci_image.py` runs a smoke
-test with an isolated tag, container name and loopback port. Build the
+test with an isolated tag, container name and loopback port on a local
+Unix-socket Docker context. Build the
 compiler launcher first with `gradle :evidence-check:installDist`.
 
 A local Compose host can use an image in its Docker engine. A remote VPS or
@@ -40,3 +41,5 @@ node-local import. For a multi-node target, make it available on every
 eligible node and provide images for their architectures. The fixture
 builds for the local engine's platform. Its Temurin base digest points to
 an OCI index with Linux AMD64 and ARM64 manifests.
+The base digest and deterministic JAR settings reduce build drift. Use
+the resulting image digest to identify the exact deployed image.
