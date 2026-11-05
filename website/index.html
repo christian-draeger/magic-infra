@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#080b11" />
-  <meta name="description" content="Generate reviewable infrastructure from your existing app code. Run Docker Compose locally or on a VPS, or deploy to your own Kubernetes cluster. Spring Boot first." />
-  <meta property="og:title" content="magic-infra — Infra from your code. Yours to run." />
-  <meta property="og:description" content="Your app code describes what it needs. magic-infra turns it into infrastructure you can inspect, deploy and own. Product preview." />
+  <meta name="description" content="Generate reviewable infrastructure from your existing app code. An open adapter model connects different frameworks to Docker Compose and Kubernetes." />
+  <meta property="og:title" content="magic-infra — Your app knows what it needs. Your infra should too." />
+  <meta property="og:description" content="Open framework adapters turn the needs of your existing app into infrastructure you can inspect, deploy and own. Product preview." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://christian-draeger.github.io/magic-infra/" />
   <link rel="canonical" href="https://christian-draeger.github.io/magic-infra/" />
-  <title>magic-infra — Infra from your code. Yours to run.</title>
+  <title>magic-infra — Your app knows what it needs. Your infra should too.</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=star" />
-  <link rel="stylesheet" href="assets/styles.css?v=run-paths" />
+  <link rel="stylesheet" href="assets/styles.css?v=open-adapters" />
   <script defer src="assets/app.js"></script>
 </head>
 <body id="top">
@@ -32,9 +32,9 @@
   <main id="main" tabindex="-1">
     <section class="hero section container" aria-labelledby="hero-title">
       <div class="hero-copy reveal">
-        <div class="eyebrow"><span class="status-dot"></span> CODE FIRST <span class="eyebrow-divider"></span> SELF-HOSTED BY DESIGN <span class="eyebrow-line"></span></div>
-        <h1 id="hero-title">Infra from<br/>your code.<br/><span class="h1-accent">Yours to run<span class="period">.</span></span></h1>
-        <p class="hero-lede">Your app code is the source of truth for what it needs and how its services connect. <strong>magic-infra</strong> reads your Spring Boot project and generates the infrastructure files for you. Review every change and decide what gets deployed.</p>
+        <div class="eyebrow"><span class="status-dot"></span> CODE FIRST <span class="eyebrow-divider"></span> OPEN BY DESIGN <span class="eyebrow-line"></span></div>
+        <h1 id="hero-title">Your app knows<br/>what it needs.<br/><span class="h1-accent">Your infra<br/>should too<span class="period">.</span></span></h1>
+        <p class="hero-lede">Your app code describes what it needs and how its services connect. <strong>magic-infra</strong> uses <a href="#architecture">open framework adapters</a> to turn those signals into infrastructure files you can review, run, and own.</p>
         <p class="hero-targets">Docker Compose locally or on a VPS. Kubernetes in your own cluster.</p>
         <div class="hero-actions"><a class="button button-primary" href="#experience">See the magic <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="currentColor"><path d="M12 .9A11.1 11.1 0 0 0 8.5 22.5c.55.1.76-.24.76-.53v-2.1c-3.1.67-3.75-1.3-3.75-1.3-.5-1.25-1.24-1.58-1.24-1.58-1-.7.08-.68.08-.68 1.12.08 1.7 1.15 1.7 1.15 1 .1 1.69-.68 1.9-.97.1-.73.39-1.22.7-1.5-2.47-.29-5.07-1.24-5.07-5.49 0-1.21.43-2.2 1.14-2.97-.11-.28-.5-1.4.11-2.92 0 0 .94-.3 3.05 1.14a10.62 10.62 0 0 1 5.55 0c2.12-1.44 3.05-1.14 3.05-1.14.61 1.52.22 2.64.1 2.92.72.77 1.15 1.76 1.15 2.97 0 4.26-2.61 5.19-5.1 5.48.4.35.75 1.02.75 2.06v3.05c0 .3.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg> Follow the build</a></div>
         <p class="hero-note"><span class="tiny-spark">✳</span> Product preview <span class="line-dot">·</span> Compiler in planning</p>
@@ -46,7 +46,7 @@
         <div class="terminal-card" id="hero-terminal">
           <div class="terminal-head"><div class="terminal-dots"><span></span><span></span><span></span></div><span class="terminal-path">~/projects/shop</span><span class="terminal-corner">DEMO</span></div>
           <div class="terminal-stage"><span class="terminal-prompt">$</span> <span>magic-infra plan --target docker</span></div>
-          <div class="terminal-row"><span class="term-success">✓</span> Spring Boot API needs PostgreSQL</div>
+          <div class="terminal-row"><span class="term-success">✓</span> API needs PostgreSQL</div>
           <div class="terminal-row"><span class="term-success">✓</span> Managed PostgreSQL confirmed</div>
           <div class="terminal-row"><span class="term-success">✓</span> compose.yaml generated for review</div>
           <div class="terminal-rule"></div>
@@ -82,7 +82,7 @@
 
     <section class="section demo-section" id="experience" aria-labelledby="experience-title">
       <div class="container">
-        <div class="section-intro small reveal"><p class="overline"><span>01 / TRY THE WORKFLOW</span><span>SPRING BOOT → POSTGRESQL</span></p><h2 id="experience-title">Read the signals.<br/><em>Respect the intent.</em></h2><p>The same Spring app can run with its own PostgreSQL or connect to one you already run. The code reveals the need; you decide who manages it. Switch targets to see what magic-infra would generate.</p></div>
+        <div class="section-intro small reveal"><p class="overline"><span>01 / TRY THE WORKFLOW</span><span>SPRING BOOT → POSTGRESQL</span></p><h2 id="experience-title">Read the signals.<br/><em>Respect the intent.</em></h2><p>Take a Spring Boot API as an example. Its code tells us it needs PostgreSQL. You choose whether to run a database with the app or connect one you already have. Switch targets to see what magic-infra would generate.</p></div>
         <div class="experience-grid reveal">
           <div class="experience-side">
             <p class="small-cap">ONE COMPOSABLE WORKFLOW</p>
@@ -109,11 +109,11 @@ spring:
     </section>
 
     <section class="section architecture container" id="architecture" aria-labelledby="architecture-title">
-      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>A COMPILER, NOT A CLOUD</span></p><h2 id="architecture-title">One application model.<br/><em>Two deployment targets.</em></h2><p>Adapters report what the app needs. The compiler combines that evidence with your <code>infra.yaml</code> into a portable application model. Each backend turns it into a plan and standard deployment files.</p></div>
+      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>OPEN FRAMEWORK ADAPTERS</span></p><h2 id="architecture-title">Many frameworks.<br/><em>One compiler.</em></h2><p>Each adapter reads its framework and reports what it finds in a shared format. The compiler combines those findings with your choices in <code>infra.yaml</code> and generates a plan for Compose or Kubernetes. A new framework can plug in without changing the compiler or deployment backends.</p></div>
       <div class="architecture-visual reveal" aria-label="Architecture diagram: framework adapters produce evidence, the compiler resolves an application model and a deployment plan, and the backends produce Docker Compose or Kubernetes artifacts">
         <div class="architecture-topline"><span>ARCHITECTURE / SYSTEM VIEW</span><span><span class="live-indicator"></span> DESIGNED FOR EXTENSIBILITY</span></div>
         <div class="arch-flow">
-          <div class="arch-box arch-input"><div class="arch-ico">&lt;/&gt;</div><div class="arch-type">FRAMEWORK ADAPTERS</div><h3>Understand<br/>the application.</h3><div class="arch-chips"><span>Spring Boot <small>first</small></span><span>Next.js <small>pilot</small></span><span>+ your adapter</span></div></div>
+          <div class="arch-box arch-input"><div class="arch-ico">&lt;/&gt;</div><div class="arch-type">FRAMEWORK ADAPTERS</div><h3>Understand<br/>the application.</h3><div class="arch-chips"><span>Spring Boot <small>first planned</small></span><span>Next.js <small>planned pilot</small></span><span>+ community adapters</span></div></div>
           <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Evidence</small></div>
           <div class="arch-box arch-core"><div class="core-glimmer" aria-hidden="true"></div><div class="arch-ico core-ico">✳</div><div class="arch-type">MAGIC-INFRA CORE</div><h3>Resolve.<br/>Validate. Plan.</h3><p>Evidence + explicit intent → application model → target plan.</p><div class="core-label">PORTABLE BY DESIGN</div></div>
           <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Plan</small></div>
@@ -126,22 +126,22 @@ spring:
 
     <section class="section ownership-section" aria-labelledby="ownership-title"><div class="container ownership-grid"><div class="ownership-copy reveal"><p class="overline"><span>03 / OWN THE OUTPUT</span></p><h2 id="ownership-title">Generate it once.<br/><em>Own it for good.</em></h2><p>Review the files in Git, deploy them through your existing workflow, and keep operating them without a magic-infra runtime. You still own backups, updates and availability.</p><div class="ownership-list"><div><span class="own-icon">↳</span><span>Generated, readable Compose and Kubernetes artifacts</span></div><div><span class="own-icon">↳</span><span>Git-friendly diff and review workflow</span></div><div><span class="own-icon">↳</span><span>Explicit resource ownership and retention</span></div><div><span class="own-icon">↳</span><span>A documented handover for stateful resources</span></div></div><p class="ownership-caveat">* Safe ownership transfer and lifecycle workflows are roadmap features, not released functionality.</p></div><div class="ownership-art reveal" style="--delay:.12s" aria-hidden="true"><div class="art-grid"></div><div class="art-ring r1"></div><div class="art-ring r2"></div><div class="art-ring r3"></div><div class="art-center"><span>✳</span><strong>YOUR<br/>INFRA</strong></div><div class="art-pill pill-1">compose.yaml <span>✓</span></div><div class="art-pill pill-2">k8s/ <span>✓</span></div><div class="art-pill pill-3">git diff <span>✓</span></div><div class="art-coordinate">OWNERSHIP: 100% YOU</div></div></div></section>
 
-    <section class="section support container" id="support" aria-labelledby="support-title"><div class="section-intro reveal"><p class="overline"><span>04 / THE STACK</span><span>OPINIONATED ON PURPOSE</span></p><h2 id="support-title">Start focused.<br/><em>Grow without rewrites.</em></h2><p>Spring Boot with Gradle and PostgreSQL first. Get the same app running on a single Compose host and on K3s before expanding to more resources and frameworks.</p></div>
+    <section class="section support container" id="support" aria-labelledby="support-title"><div class="section-intro reveal"><p class="overline"><span>04 / THE STACK</span><span>OPINIONATED ON PURPOSE</span></p><h2 id="support-title">Start focused.<br/><em>Grow without rewrites.</em></h2><p>The first planned path is Spring Boot, PostgreSQL and Compose. Then prove Kubernetes portability and use a second framework adapter to test that others can extend the system.</p></div>
       <div class="support-grid">
         <article class="support-card primary reveal"><div class="support-card-top"><div class="support-icon spring-icon">S</div><span class="support-status">FIRST ADAPTER · PLANNED</span></div><h3>Spring Boot</h3><p>Java and Kotlin application awareness: dependencies, supported config, annotations and explicit intent.</p><div class="support-card-foot">JAVA + KOTLIN <span>↗</span></div></article>
         <article class="support-card reveal" style="--delay:.05s"><div class="support-card-top"><div class="support-icon pg-icon">P</div><span class="support-status">FIRST RESOURCE · PLANNED</span></div><h3>PostgreSQL</h3><p>Managed or external, with traceable bindings and retention-first lifecycle policies.</p><div class="support-card-foot">PERSISTENT DATA <span>↗</span></div></article>
         <article class="support-card reveal" style="--delay:.10s"><div class="support-card-top"><div class="support-icon docker-icon">▣</div><span class="support-status">FIRST TARGET · PLANNED</span></div><h3>Docker Compose</h3><p>Self-host on one Linux box. Standard services, volumes and readable configuration.</p><div class="support-card-foot">VPS FRIENDLY <span>↗</span></div></article>
         <article class="support-card reveal" style="--delay:.15s"><div class="support-card-top"><div class="support-icon k8-icon">✺</div><span class="support-status">SECOND TARGET · PLANNED</span></div><h3>Kubernetes / K3s</h3><p>The same application intent, with Kubernetes-native workloads and CloudNativePG.</p><div class="support-card-foot">CLOUD NEUTRAL <span>↗</span></div></article>
         <article class="support-card reveal" style="--delay:.2s"><div class="support-card-top"><div class="support-icon msg-icon">⇄</div><span class="support-status">EXPANSION · PLANNED</span></div><h3>RabbitMQ + Valkey</h3><p>Messaging and caching on both backends, with explicit topology and durability semantics.</p><div class="support-card-foot">EVENTS + CACHE <span>↗</span></div></article>
-        <article class="support-card future reveal" style="--delay:.25s"><div class="support-card-top"><div class="support-icon next-icon">N</div><span class="support-status">EXTENSION PILOT</span></div><h3>Next.js & beyond</h3><p>An experimental Next.js adapter will test whether a new framework can plug in without changing the compiler.</p><div class="support-card-foot">PLUGIN-READY VISION <span>↗</span></div></article>
-      </div><div class="future-note reveal"><span>✳</span><div><strong>What could plug in next?</strong><p>A Django adapter could emit the same evidence contract. An S3-compatible resource could add object storage, and a Nomad backend could target a new scheduler. These are examples of what the design makes possible.</p></div></div>
+        <article class="support-card future reveal" style="--delay:.25s"><div class="support-card-top"><div class="support-icon next-icon">N</div><span class="support-status">EXTENSION PILOT</span></div><h3>Next.js & beyond</h3><p>A planned Next.js pilot will test the public adapter format with a framework outside the JVM.</p><div class="support-card-foot">PLUGIN-READY VISION <span>↗</span></div></article>
+      </div><div class="future-note reveal"><span>✳</span><div><strong>What could plug in next?</strong><p>A Django or Express adapter could describe what its app needs in the same format. The design also leaves room for new resources and deployment targets, such as S3-compatible storage or Nomad. These are examples, not commitments.</p></div></div>
     </section>
 
     <section class="section comparison container" id="comparison" aria-labelledby="comparison-title">
       <div class="section-intro reveal">
         <p class="overline"><span>05 / WHERE IT FITS</span><span>THE TOOLCHAIN</span></p>
         <h2 id="comparison-title">Keep your framework.<br/><em>Take the files.</em></h2>
-        <p>magic-infra aims to fill the gap between an existing Spring app and your deployment workflow. It explains what the app needs, asks you who should manage it, and produces files you can take over.</p>
+        <p>magic-infra aims to fill the gap between your existing application and your deployment workflow. It explains what the app needs, asks you who should manage it, and produces files you can take over.</p>
       </div>
       <div class="comparison-grid reveal">
         <section class="comparison-group" aria-labelledby="alternatives-title">
@@ -151,7 +151,7 @@ spring:
             <summary><span><strong>Nitric</strong><small>Infrastructure via an app SDK</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
             <div class="tool-detail-body">
               <p><strong>Good fit:</strong> You want to declare resources in application code and map them to deployment providers, including custom ones.</p>
-              <p><strong>Difference:</strong> SDK calls express intent directly. magic-infra would work from existing Spring conventions and ask about ambiguous signals, without requiring Nitric-style declarations in app code.</p>
+              <p><strong>Difference:</strong> SDK calls express intent directly. magic-infra would read the conventions of frameworks you already use and ask about ambiguous signals, without requiring Nitric-style declarations in app code.</p>
               <a href="https://nitric.io/docs/get-started/foundations/infrastructure">Nitric infrastructure docs <span aria-hidden="true">↗</span></a>
             </div>
           </details>
@@ -159,7 +159,7 @@ spring:
             <summary><span><strong>Encore</strong><small>Integrated Go and TypeScript backend</small></span><span class="tool-expand" aria-hidden="true"></span></summary>
             <div class="tool-detail-body">
               <p><strong>Good fit:</strong> You want an integrated Go or TypeScript framework with local infrastructure. The managed platform is optional; Encore also documents Docker self-hosting.</p>
-              <p><strong>Difference:</strong> Encore derives its model from its own primitives. magic-infra starts with the Spring app you have and plans the services and bindings for your Compose or Kubernetes target.</p>
+              <p><strong>Difference:</strong> Encore derives its model from its own primitives. magic-infra starts with the app framework you already use and plans the services and bindings for your Compose or Kubernetes target.</p>
               <a href="https://encore.dev/docs/platform/introduction">Encore platform and self-hosting docs <span aria-hidden="true">↗</span></a>
             </div>
           </details>

@@ -3,8 +3,10 @@
 magic-infra is a self-hosted infrastructure compiler for existing applications.
 The app code is the source of truth for what the app needs and how its services
 connect. magic-infra reads those signals, asks for decisions the code cannot
-make, and generates deployment files you can review, run and own. Spring Boot
-is the first framework target.
+make, and generates deployment files you can review, run and own. Each
+framework adapter reports its findings through a shared Evidence contract,
+so new adapters can use the same compiler and deployment backends. Spring Boot
+is the first planned adapter; a Next.js pilot will test that boundary.
 
 The compiler and integrations described here are design goals. The same
 application model should cover three starting points:
@@ -45,7 +47,7 @@ ranking.
 
 | Tool | Choose it when… | Relationship to magic-infra |
 | --- | --- | --- |
-| [Nitric](https://nitric.io/docs/get-started/foundations/infrastructure) | You want an app SDK to express resource requirements and providers to implement them. | Close product comparison. SDK calls make intent explicit; magic-infra starts with existing Spring conventions and asks about ambiguity. Nitric also supports [custom providers](https://nitric.io/docs/providers/custom). |
+| [Nitric](https://nitric.io/docs/get-started/foundations/infrastructure) | You want an app SDK to express resource requirements and providers to implement them. | Close product comparison. SDK calls make intent explicit; magic-infra reads the conventions of existing frameworks and asks about ambiguity. Nitric also supports [custom providers](https://nitric.io/docs/providers/custom). |
 | [Encore](https://encore.dev/docs/platform/introduction) | You want an integrated Go or TypeScript backend framework with local infrastructure and a managed or [self-hosted](https://encore.dev/docs/self-host/build) deployment path. | Close product comparison. Both derive infrastructure from applications. magic-infra focuses on adopting an existing framework and producing Compose or Kubernetes files, rather than using Encore primitives. |
 | [SST](https://sst.dev/docs/providers/) | You want to define your infrastructure in TypeScript and use a broad provider catalog. | Adjacent alternative. SST gives you explicit control over topology and resource state; magic-infra trades some of that breadth for discovery and a smaller catalog. |
 | [Score](https://docs.score.dev/docs/how-to/create-a-score-implementation/) | You have a workload spec and want to map it onto Compose or Kubernetes. | Closest architecture overlap. Evaluate exporting the workload portion of our model instead of inventing a second way to describe ports, containers and resource dependencies. |

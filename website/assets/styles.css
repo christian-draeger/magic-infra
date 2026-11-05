@@ -28,6 +28,7 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}html.js-ready .reveal{opacity:1;translate:0 0;transition:none}.orb::before,.orb-ring,.orb-star,.floating-label,.status-dot,.art-ring,.art-pill,.art-center span,.travel-dot,.core-glimmer{animation:none!important}.button,.problem-card,.support-card,.terminal-card,.roadmap-item{transition:none!important}}
 
 /* Deployment paths */
+.hero-lede a{color:var(--lime);text-decoration:underline;text-underline-offset:3px}
 .hero-targets{color:#cfdfd3;font-size:13px;line-height:1.6;margin-bottom:0}
 .run-paths{position:relative;border-block:1px solid var(--line);background:#0d1318;padding:38px 0 42px}
 .run-paths .overline{max-width:none;margin-bottom:12px}
