@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -65,19 +66,59 @@ def await_health(url):
     raise AssertionError("The Spring OCI fixture did not become healthy.")
 
 
+@contextmanager
+def compose_cleanup(compose, env=None):
+    try:
+        yield
+    finally:
+        original = sys.exception()
+        try:
+            command(*compose, "down", "--volumes", "--remove-orphans", timeout=60, env=env)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            if original is None:
+                raise
+            original.add_note("Could not remove the Compose smoke test stack.")
+
+
+def start_compose(compose, service, env=None):
+    command(*compose, "up", "--detach", "--wait", "--wait-timeout", "90", env=env)
+    endpoint = command(*compose, "port", service["id"], str(service["runtime"]["port"]), env=env).strip()
+    assert endpoint.startswith("127.0.0.1:"), endpoint
+    address = f"http://{endpoint}"
+    await_health(f"{address}{service['runtime']['healthPath']}")
+    return address
+
+
+def note_request(address, method, status, body=None):
+    url = f"{address}/notes/fixture-note"
+    data = body.encode() if body is not None else None
+    request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "text/plain; charset=UTF-8"})
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(request, timeout=5) as response:
+            assert response.status == status, response.status
+            return response.read().decode()
+    except urllib.error.HTTPError as error:
+        if error.code != status:
+            raise
+        error.close()
+        return None
+
+
+def assert_password_absent(compose, password, env=None):
+    logs = subprocess.run((*compose, "logs", "--no-color"), check=True, text=True, capture_output=True,
+                          timeout=30, env=env)
+    assert password not in logs.stdout + logs.stderr
+
+
 def check_compose(docker, evidence, declaration, service, suffix):
     managed = yaml.safe_load(declaration)
     service_id = service["id"]
-    managed["resources"]["primary-db"] = {
-        "kind": "postgresql", "management": "managed", "deletionPolicy": "retain",
-        "database": "fixture", "secretRef": "fixture-db", "storageSize": "1Gi",
-    }
-    managed["bindings"] = [{"serviceId": service_id, "resourceId": "primary-db"}]
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         compose_file = folder / "compose.yaml"
         override = folder / "smoke.override.yaml"
-        compose_file.write_text(command(str(READER), "generate", str(evidence), "-", input=yaml.safe_dump(managed)))
+        compose_file.write_text(command(str(READER), "generate", str(evidence), "-", input=declaration))
         port = service["runtime"]["port"]
         override.write_text(f"services:\n  {service_id}:\n    ports: !override ['127.0.0.1::{port}']\n")
         secret = folder / "secrets/fixture-db.env"
@@ -86,31 +127,49 @@ def check_compose(docker, evidence, declaration, service, suffix):
         secret.write_text(f"POSTGRES_USER=fixture\nPOSTGRES_PASSWORD={password}\n"
                           f"SPRING_DATASOURCE_USERNAME=fixture\nSPRING_DATASOURCE_PASSWORD={password}\n")
         assert password not in compose_file.read_text()
-        compose = (*docker, "compose", "-p", f"magic-infra-render-{suffix}", "-f", str(compose_file), "-f", str(override))
+        project = f"magic-infra-render-{suffix}"
+        compose = (*docker, "compose", "-p", project, "-f", str(compose_file), "-f", str(override))
         command(*compose, "config", "--quiet")
-        try:
-            command(*compose, "up", "--detach", "--wait", "--wait-timeout", "90")
-            endpoint = command(*compose, "port", service_id, str(port)).strip()
-            assert endpoint.startswith("127.0.0.1:"), endpoint
-            await_health(f"http://{endpoint}{service['runtime']['healthPath']}")
-            db = command(*compose, "ps", "--quiet", "primary-db").strip()
-            assert command(*docker, "inspect", "--format", "{{.State.Health.Status}}", db).strip() == "healthy"
-        finally:
-            original = sys.exception()
-            try:
-                command(*compose, "down", "--volumes", "--remove-orphans", timeout=60)
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                if original is None:
-                    raise
-                original.add_note("Could not remove the Compose smoke test stack.")
+        with compose_cleanup(compose):
+            address = start_compose(compose, service)
+            db_before = command(*compose, "ps", "--quiet", "primary-db").strip()
+            assert command(*docker, "inspect", "--format", "{{.State.Health.Status}}", db_before).strip() == "healthy"
+            note_request(address, "POST", 201, "first note")
+            assert note_request(address, "GET", 200) == "first note"
+            updated = "PostgreSQL kept this fixture's note"
+            note_request(address, "PUT", 204, updated)
+            assert note_request(address, "GET", 200) == updated
 
-        resource = managed["resources"]["primary-db"]
-        resource["management"] = "external"
-        resource["endpointRef"] = "FIXTURE_DB_URL"
-        del resource["storageSize"]
-        compose_file.write_text(command(str(READER), "generate", str(evidence), "-", input=yaml.safe_dump(managed)))
-        command(*compose, "config", "--quiet", env={**os.environ, "FIXTURE_DB_URL": "jdbc:postgresql://example.invalid/fixture"})
-    print("Generated Compose started PostgreSQL and the Spring fixture. External mode validated with an endpoint reference.")
+            command(*compose, "down")
+            address = start_compose(compose, service)
+            db_after = command(*compose, "ps", "--quiet", "primary-db").strip()
+            assert db_before and db_after and db_before != db_after
+            assert note_request(address, "GET", 200) == updated
+
+            resource = managed["resources"]["primary-db"]
+            resource["management"] = "external"
+            resource["endpointRef"] = "FIXTURE_DB_URL"
+            del resource["storageSize"]
+            external_file = folder / "external.yaml"
+            external_file.write_text(command(str(READER), "generate", str(evidence), "-", input=yaml.safe_dump(managed)))
+            external_doc = yaml.safe_load(external_file.read_text())
+            assert set(external_doc["services"]) == {service_id} and "volumes" not in external_doc
+            assert password not in external_file.read_text()
+            external_network = folder / "external-network.override.yaml"
+            external_network.write_text(f"networks:\n  default:\n    external: true\n    name: {project}_default\n")
+            external = (*docker, "compose", "-p", f"{project}-external", "-f", str(external_file), "-f",
+                        str(override), "-f", str(external_network))
+            env = {**os.environ, "FIXTURE_DB_URL": "jdbc:postgresql://primary-db:5432/fixture"}
+            command(*external, "config", "--quiet", env=env)
+            with compose_cleanup(external, env=env):
+                external_address = start_compose(external, service, env=env)
+                assert note_request(external_address, "GET", 200) == updated
+                assert_password_absent(external, password, env=env)
+
+            note_request(address, "DELETE", 204)
+            note_request(address, "GET", 404)
+            assert_password_absent(compose, password)
+    print("PostgreSQL CRUD, volume persistence after recreation, and an external binding to the existing database passed.")
 
 
 def main(with_compose):
@@ -123,8 +182,19 @@ def main(with_compose):
     suffix = uuid.uuid4().hex[:12]
     image = f"magic-infra-compose-smoke:{suffix}"
     container = f"magic-infra-compose-smoke-{suffix}"
-    declaration = (FIXTURE / "infra.yaml").read_text().replace("magic-infra-compose-app:fixture", image)
+    declaration_path = FIXTURE / "infra.yaml"
     evidence = FIXTURE / "build/magic-infra/evidence.json"
+    if with_compose:
+        for action, name in (("plan", "plan.json"), ("generate", "compose.yaml")):
+            artifact = command(str(READER), action, str(evidence), str(declaration_path))
+            assert artifact == (FIXTURE / "expected" / name).read_text(), f"Unexpected {name} output"
+        undeclared = yaml.safe_load(declaration_path.read_text())
+        undeclared["resources"] = {}
+        undeclared["bindings"] = []
+        blocked = subprocess.run((str(READER), "generate", str(evidence), "-"), input=yaml.safe_dump(undeclared),
+                                 text=True, capture_output=True, timeout=30)
+        assert blocked.returncode == 4 and not blocked.stdout and "MI_APPLICATION_BINDING_REQUIRED" in blocked.stderr
+    declaration = declaration_path.read_text().replace("magic-infra-compose-app:fixture", image)
     model = json.loads(command(str(READER), "resolve", str(evidence), "-", input=declaration))
     service = model["services"][0]
     assert service["build"] == {"strategy": "prebuilt", "imageRef": image}
@@ -137,7 +207,9 @@ def main(with_compose):
         command(*docker, "build", "--builder", "default", "--tag", image, str(FIXTURE))
         built_image = image
         container_id = command(*docker, "create", "--name", container, "--publish",
-                               f"127.0.0.1::{port}", service["build"]["imageRef"]).strip()
+                               f"127.0.0.1::{port}", "--env",
+                               "SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
+                               service["build"]["imageRef"]).strip()
         command(*docker, "start", container_id)
         endpoint = command(*docker, "port", container_id, f"{port}/tcp").strip()
         assert endpoint.startswith("127.0.0.1:"), endpoint

@@ -1,0 +1,33 @@
+name: compose-app_dev
+services:
+  compose-app:
+    image: magic-infra-compose-app:fixture
+    ports:
+    - 127.0.0.1:8080:8080
+    env_file:
+    - path: ./secrets/fixture-db.env
+      format: raw
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://primary-db:5432/fixture
+    depends_on:
+      primary-db:
+        condition: service_healthy
+  primary-db:
+    image: postgres:16@sha256:933463a6c8eba2b9f5cd414138738cd8d5519cd2c471214c222652f547a66a32
+    env_file:
+    - path: ./secrets/fixture-db.env
+      format: raw
+    environment:
+      POSTGRES_DB: fixture
+    volumes:
+    - primary-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+volumes:
+  primary-db-data: {}
