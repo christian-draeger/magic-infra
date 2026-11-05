@@ -309,7 +309,7 @@ def check_plan_preview():
     rejected(blocked, 4, "MI_PLAN_EVIDENCE_ERROR", "evidence-check analyze")
 
     two_dbs = yaml.safe_load((directory / "external.yaml").read_text())
-    two_dbs["services"]["worker"] = two_dbs["services"]["api"].copy()
+    two_dbs["services"]["worker"] = {**two_dbs["services"]["api"], "port": 8081}
     two_dbs["resources"]["other-db"] = {**two_dbs["resources"]["primary-db"], "endpointRef": "OTHER_DB_URL"}
     two_dbs["bindings"].append({"serviceId": "worker", "resourceId": "other-db"})
     two_services = {**evidence, "services": [*evidence["services"], {"id": "worker", "module": ":worker", "buildSystem": "gradle"}]}
@@ -325,6 +325,33 @@ def check_plan_preview():
     assert b"Bind service api to PostgreSQL resource primary-db." in original
     assert b"Bind service api to PostgreSQL resource other-db." in switched
     print("CLI initialization, Evidence inspection and side-effect-free plan preview checks passed.")
+
+
+def check_compose_renderer():
+    evidence_path = ROOT / "examples/m0/evidence.json"
+    directory = ROOT / "examples/infra"
+    for mode in ("managed", "external"):
+        command = [READER, "generate", evidence_path, directory / f"{mode}.yaml"]
+        output = success(invoke(command))
+        assert output == success(invoke(command))
+        compose = yaml.safe_load(output)
+        assert compose["name"] == "shop-dev"
+        app = compose["services"]["api"]
+        assert app["ports"] == ["127.0.0.1:8080:8080"]
+        assert app["env_file"] == [{"path": "./secrets/shop-db-credentials.env", "format": "raw"}]
+        assert "POSTGRES_PASSWORD" not in output.decode()
+        if mode == "managed":
+            database = compose["services"]["primary-db"]
+            assert database["image"].startswith("postgres:16@sha256:")
+            assert database["volumes"] == ["primary-db-data:/var/lib/postgresql/data"]
+            assert app["depends_on"] == {"primary-db": {"condition": "service_healthy"}}
+            assert app["environment"]["SPRING_DATASOURCE_URL"] == "jdbc:postgresql://primary-db:5432/shop"
+        else:
+            assert set(compose["services"]) == {"api"} and "volumes" not in compose
+            assert "depends_on" not in app
+            assert app["environment"]["SPRING_DATASOURCE_URL"] == "${SHOP_DB_URL:?Set SHOP_DB_URL}"
+        rejected(invoke(command + ["--require-host-failover"]), 4, "MI_COMPOSE_HOST_FAILOVER", "multiple hosts")
+    print("Compose artifact repeatability, managed/external ownership and host-failover checks passed.")
 
 
 def check_config():
@@ -569,6 +596,7 @@ if __name__ == "__main__":
     check_infra_declarations()
     check_application_model()
     check_plan_preview()
+    check_compose_renderer()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)

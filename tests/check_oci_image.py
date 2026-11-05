@@ -1,13 +1,18 @@
 """Build and start the explicitly packaged Spring OCI fixture."""
 
+import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,7 +65,55 @@ def await_health(url):
     raise AssertionError("The Spring OCI fixture did not become healthy.")
 
 
-def main():
+def check_compose(docker, evidence, declaration, service, suffix):
+    managed = yaml.safe_load(declaration)
+    service_id = service["id"]
+    managed["resources"]["primary-db"] = {
+        "kind": "postgresql", "management": "managed", "deletionPolicy": "retain",
+        "database": "fixture", "secretRef": "fixture-db", "storageSize": "1Gi",
+    }
+    managed["bindings"] = [{"serviceId": service_id, "resourceId": "primary-db"}]
+    with tempfile.TemporaryDirectory() as directory:
+        folder = Path(directory)
+        compose_file = folder / "compose.yaml"
+        override = folder / "smoke.override.yaml"
+        compose_file.write_text(command(str(READER), "generate", str(evidence), "-", input=yaml.safe_dump(managed)))
+        port = service["runtime"]["port"]
+        override.write_text(f"services:\n  {service_id}:\n    ports: !override ['127.0.0.1::{port}']\n")
+        secret = folder / "secrets/fixture-db.env"
+        secret.parent.mkdir(mode=0o700)
+        password = uuid.uuid4().hex
+        secret.write_text(f"POSTGRES_USER=fixture\nPOSTGRES_PASSWORD={password}\n"
+                          f"SPRING_DATASOURCE_USERNAME=fixture\nSPRING_DATASOURCE_PASSWORD={password}\n")
+        assert password not in compose_file.read_text()
+        compose = (*docker, "compose", "-p", f"magic-infra-render-{suffix}", "-f", str(compose_file), "-f", str(override))
+        command(*compose, "config", "--quiet")
+        try:
+            command(*compose, "up", "--detach", "--wait", "--wait-timeout", "90")
+            endpoint = command(*compose, "port", service_id, str(port)).strip()
+            assert endpoint.startswith("127.0.0.1:"), endpoint
+            await_health(f"http://{endpoint}{service['runtime']['healthPath']}")
+            db = command(*compose, "ps", "--quiet", "primary-db").strip()
+            assert command(*docker, "inspect", "--format", "{{.State.Health.Status}}", db).strip() == "healthy"
+        finally:
+            original = sys.exception()
+            try:
+                command(*compose, "down", "--volumes", "--remove-orphans", timeout=60)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                if original is None:
+                    raise
+                original.add_note("Could not remove the Compose smoke test stack.")
+
+        resource = managed["resources"]["primary-db"]
+        resource["management"] = "external"
+        resource["endpointRef"] = "FIXTURE_DB_URL"
+        del resource["storageSize"]
+        compose_file.write_text(command(str(READER), "generate", str(evidence), "-", input=yaml.safe_dump(managed)))
+        command(*compose, "config", "--quiet", env={**os.environ, "FIXTURE_DB_URL": "jdbc:postgresql://example.invalid/fixture"})
+    print("Generated Compose started PostgreSQL and the Spring fixture. External mode validated with an endpoint reference.")
+
+
+def main(with_compose):
     docker = local_docker()
     gradle = ("gradle", "--no-daemon", "--console=plain", "-p", str(FIXTURE))
     analysis = command(*gradle, "springEvidence")
@@ -89,14 +142,18 @@ def main():
         endpoint = command(*docker, "port", container_id, f"{port}/tcp").strip()
         assert endpoint.startswith("127.0.0.1:"), endpoint
         await_health(f"http://{endpoint}{health}")
+        if with_compose:
+            check_compose(docker, evidence, declaration, service, suffix)
     finally:
         remove_fixture(docker, container_id, built_image)
     print("Spring analysis stayed separate from OCI build. The resolved image and health metadata worked in Docker.")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--with-compose", action="store_true")
     try:
-        main()
+        main(parser.parse_args().with_compose)
     except subprocess.CalledProcessError as failure:
         notes = "\n".join(getattr(failure, "__notes__", []))
         raise SystemExit(failure.stdout + failure.stderr + notes) from failure

@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 private val json = JsonMapper.builder().build()
 private val writer = json.writer(DefaultPrettyPrinter().withObjectIndenter(DefaultIndenter("  ", "\n")))
 private val applicationId = Regex("[a-z][a-z0-9-]{0,62}")
-private val commands = setOf("init", "analyze", "validate-infra", "explain", "resolve", "plan")
+private val commands = setOf("init", "analyze", "validate-infra", "explain", "resolve", "plan", "generate")
 
 fun main(rawArgs: Array<String>) {
     val structured = rawArgs.firstOrNull() == "--diagnostics=json"
@@ -28,7 +28,7 @@ fun main(rawArgs: Array<String>) {
                 readInput(args[1], infra = true, read = InfraDeclarationReader::read)
             args.size >= 2 && args[0] == "explain" -> explain(args, structured)
             args.size == 3 && args[0] == "resolve" -> compile(args[1], args[2])
-            args.size in 3..4 && args[0] == "plan" -> compile(args[1], args[2], args.getOrNull(3) ?: "dev")
+            args.size in 3..5 && args[0] in setOf("plan", "generate") -> target(args)
             else -> usage()
         }
     } catch (failure: EvidenceRejected) {
@@ -60,12 +60,27 @@ private fun init(id: String, image: String, port: String) {
     print(document)
 }
 
-private fun compile(evidencePath: String, declarationPath: String, environment: String? = null) {
+private fun target(args: Array<String>) {
+    val options = args.drop(3)
+    if ("--require-host-failover" in options) {
+        throw EvidenceRejected("MI_COMPOSE_HOST_FAILOVER",
+            "Single-host Compose cannot provide host failover. Select a target with multiple hosts.", 4)
+    }
+    if (options.size > 1 || options.any { it.startsWith("--") }) usage()
+    compile(args[1], args[2], options.singleOrNull() ?: "dev", args[0] == "generate")
+}
+
+private fun compile(evidencePath: String, declarationPath: String, environment: String? = null, render: Boolean = false) {
     if (evidencePath == "-" && declarationPath == "-") usage()
     val evidence = readInput(evidencePath, read = EvidenceReader::read)
     val declaration = readInput(declarationPath, infra = true, read = InfraDeclarationReader::read)
     val model = ApplicationModelResolver.resolve(evidence, declaration)
-    writeJson(if (environment == null) model else DeploymentPlanPreview.plan(model, evidence, environment))
+    if (environment == null) {
+        writeJson(model)
+        return
+    }
+    val plan = DeploymentPlanPreview.plan(model, evidence, environment)
+    if (render) print(ComposeRenderer.render(model, plan)) else writeJson(plan)
 }
 
 private fun explain(args: Array<String>, structured: Boolean) {
@@ -101,7 +116,7 @@ private fun <T> readInput(path: String, infra: Boolean = false, read: (InputStre
 
 private fun usage(): Nothing = throw EvidenceRejected("MI_EVIDENCE_USAGE",
     "Use evidence-check with init <id> <image> <port>, analyze <evidence>, validate-infra <declaration>, " +
-        "explain <evidence>, resolve <evidence> <declaration>, or plan <evidence> <declaration> [environment].")
+        "explain <evidence>, resolve <evidence> <declaration>, or plan/generate <evidence> <declaration> [environment].")
 
 private fun unreadableInput(infra: Boolean): Nothing {
     if (infra) throw InfraRejected("MI_INFRA_IO", "Provide a readable declaration file or pipe it through stdin.", 1)

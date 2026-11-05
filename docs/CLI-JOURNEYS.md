@@ -10,7 +10,7 @@ In the examples below, `evidence-check` refers to the launcher under
 | Analyze | Run the Spring module's `springEvidence` task. It writes Evidence under `build/magic-infra/`. Run `evidence-check analyze evidence.json` to validate and inspect the handoff. |
 | Explain | `evidence-check explain evidence.json` shows inferred bindings and conflicts with rule and finding IDs. |
 | Plan | `evidence-check plan evidence.json infra.yaml dev` emits a versioned Compose preview. The environment defaults to `dev`. |
-| Generate | The Compose renderer will consume the resolved model and successful plan and write `compose.yaml` to the selected local output directory. The renderer is tracked in [#17](https://github.com/christian-draeger/magic-infra/issues/17). |
+| Generate | `evidence-check generate evidence.json infra.yaml dev` emits the [Compose file](COMPOSE.md) to stdout. Redirect it to the output directory you want to review. |
 
 `plan` reads only the two inputs. It outputs anticipated actions,
 prerequisites and relative artifact paths, including `compose.yaml`. It
@@ -20,9 +20,9 @@ Binding actions name their destination resource. Prerequisites name image,
 credential and endpoint references. Actual deployment runs separately after
 the files have been reviewed.
 
-Review the plan before generation. The renderer will use deterministic
-file contents, refuse unresolved ownership, and preserve files outside its
-chosen output directory. The model and plan contain secret references.
+Review the plan before generation. The renderer emits deterministic
+contents and refuses unresolved ownership. The caller chooses where to
+save the file. The model and plan contain secret references.
 Credential material comes from the deployment environment.
 
 ## CI and diagnostics
