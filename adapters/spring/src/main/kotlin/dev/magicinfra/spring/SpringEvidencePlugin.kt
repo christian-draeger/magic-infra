@@ -11,14 +11,18 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.result.ResolvedVariantResult
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
 import java.nio.file.Files
+
+private const val RESOURCE_ROOT = "src/main/resources"
 
 class SpringEvidencePlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -34,6 +38,7 @@ class SpringEvidencePlugin : Plugin<Project> {
                 }.orElse(emptyList()))
                 it.coordinates.set(project.configurations.getByName("runtimeClasspath")
                     .incoming.resolutionResult.rootComponent.map(::resolvedCoordinates))
+                it.projectDirectory.set(project.layout.projectDirectory)
                 it.output.set(project.layout.buildDirectory.file("magic-infra/evidence.json"))
             }
             project.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
@@ -43,21 +48,22 @@ class SpringEvidencePlugin : Plugin<Project> {
     }
 }
 
-@CacheableTask
+@UntrackedTask(because = "Analysis walks and validates its own bounded snapshot, including symbolic links.")
 abstract class SpringEvidenceTask : DefaultTask() {
     @get:Input abstract val applicationId: Property<String>
     @get:Input abstract val module: Property<String>
     @get:Input abstract val language: Property<String>
     @get:Input abstract val profiles: ListProperty<String>
     @get:Input abstract val coordinates: ListProperty<String>
+    @get:Internal abstract val projectDirectory: DirectoryProperty
     @get:OutputFile abstract val output: RegularFileProperty
 
     @TaskAction
     fun collect() {
         val request = AnalysisRequest(applicationId.get(), module.get(), language.get(), profiles.get(),
-            listOf("src/main/resources"), coordinates.get())
+            listOf(RESOURCE_ROOT), coordinates.get())
         val document = try {
-            evidence(request)
+            evidence(request, projectDirectory.get().asFile.toPath())
         } catch (failure: ProtocolFailure) {
             val hint = if (failure.code == "MI_SPRING_APPLICATION_ID") {
                 " Use -PmagicInfra.applicationId=shop to override the module name."

@@ -8,6 +8,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import java.io.IOException
 import java.nio.ByteBuffer
+import java.nio.file.Path
 import kotlin.system.exitProcess
 
 private const val MAX_REQUEST_BYTES = 1_048_576
@@ -20,7 +21,7 @@ fun main(args: Array<String>) {
         if (args.isNotEmpty()) {
             throw ProtocolFailure("MI_SPRING_USAGE", "Pipe one Spring adapter request JSON document to stdin.")
         }
-        print(evidence(readRequest()))
+        print(evidence(readRequest(), Path.of("").toAbsolutePath().normalize()))
     } catch (failure: ProtocolFailure) {
         System.err.println(Gson().toJson(mapOf(
             "code" to failure.code, "severity" to "error", "message" to failure.message,
