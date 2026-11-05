@@ -1,12 +1,20 @@
 # Product vision and positioning
 
 magic-infra is a self-hosted infrastructure compiler for existing applications.
-Start with a Spring Boot app, reuse what its dependencies and configuration
-already tell you, and produce reviewable Docker Compose or Kubernetes files
-for infrastructure you control. The first audience is developers and small
-platform teams moving an existing Spring app onto a VPS or their own cluster.
+The app code is the source of truth for what the app needs and how its services
+connect. magic-infra reads those signals, asks for decisions the code cannot
+make, and generates deployment files you can review, run and own. Spring Boot
+is the first framework target.
 
-The compiler and integrations described here are design goals.
+The compiler and integrations described here are design goals. The same
+application model should cover three starting points:
+
+- **Local Compose:** Give yourself or a teammate a repeatable dev stack with
+  the app and its dependencies, without hand-writing the Compose file.
+- **Compose on a VPS:** Ship that app to your own server with reviewable
+  services, volumes and secret references. Keep your deployment workflow.
+- **An existing Kubernetes cluster:** Add a service, bind infrastructure you
+  already operate, and review changes to generated manifests as the app evolves.
 
 ## What makes it magic
 

@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#080b11" />
-  <meta name="description" content="magic-infra: the open-source, self-hostable infrastructure compiler. From application intent to infrastructure you actually own. Spring Boot first. Docker Compose and Kubernetes planned." />
-  <meta property="og:title" content="magic-infra — Infrastructure that gets your code." />
-  <meta property="og:description" content="Your code knows what it needs. Your infrastructure should too. Open-source infrastructure compiler. In planning." />
+  <meta name="description" content="Generate reviewable infrastructure from your existing app code. Run Docker Compose locally or on a VPS, or deploy to your own Kubernetes cluster. Spring Boot first." />
+  <meta property="og:title" content="magic-infra — Infra from your code. Yours to run." />
+  <meta property="og:description" content="Your app code describes what it needs. magic-infra turns it into infrastructure you can inspect, deploy and own. Product preview." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://christian-draeger.github.io/magic-infra/" />
   <link rel="canonical" href="https://christian-draeger.github.io/magic-infra/" />
-  <title>magic-infra — Infrastructure that gets your code.</title>
+  <title>magic-infra — Infra from your code. Yours to run.</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="stylesheet" href="assets/styles.css" />
   <script defer src="assets/app.js"></script>
@@ -23,7 +23,7 @@
 
   <header class="site-header">
     <nav class="nav container" aria-label="Main navigation">
-      <a class="brand" href="#top" aria-label="magic-infra home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><path d="M7 25.5V10.5L18 20.5L29 10.5V25.5" stroke="currentColor" stroke-width="4.2" stroke-linecap="square" stroke-linejoin="bevel"/><path d="M12 27H24" stroke="currentColor" stroke-width="2.6"/></svg></span><span>magic<span class="brand-divider">/</span>infra</span><span class="brand-tag">project preview</span></a>
+      <a class="brand" href="#top" aria-label="magic-infra home"><img class="brand-mark" src="assets/favicon.svg" width="34" height="34" alt="" /><span>magic<span class="brand-divider">/</span>infra</span><span class="brand-tag">project preview</span></a>
       <button class="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="nav-menu"><span></span><span></span><span></span></button>
       <div class="nav-links" id="nav-menu"><a href="#experience">Demo</a><a href="#architecture">Architecture</a><a href="#support">Stack</a><a href="#comparison">Compare</a><a href="#roadmap">Roadmap</a><a class="nav-cta" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></div>
     </nav>
@@ -32,9 +32,10 @@
   <main id="main" tabindex="-1">
     <section class="hero section container" aria-labelledby="hero-title">
       <div class="hero-copy reveal">
-        <div class="eyebrow"><span class="status-dot"></span> INFRASTRUCTURE COMPILER <span class="eyebrow-divider"></span> SELF-HOSTED BY DESIGN <span class="eyebrow-line"></span></div>
-        <h1 id="hero-title">Your app knows<br/>what it needs.<br/><span class="h1-accent">Your infra<br/>should too<span class="period">.</span></span></h1>
-        <p class="hero-lede"><strong>magic-infra</strong> reads the Spring Boot app you already have. Confirm which resources it should manage, then review the generated Compose or Kubernetes files. Run them with the tools you already use.</p>
+        <div class="eyebrow"><span class="status-dot"></span> CODE FIRST <span class="eyebrow-divider"></span> SELF-HOSTED BY DESIGN <span class="eyebrow-line"></span></div>
+        <h1 id="hero-title">Infra from<br/>your code.<br/><span class="h1-accent">Yours to run<span class="period">.</span></span></h1>
+        <p class="hero-lede">Your app code is the source of truth for what it needs and how its services connect. <strong>magic-infra</strong> reads your Spring Boot project and generates the infrastructure files for you. Review every change and decide what gets deployed.</p>
+        <p class="hero-targets">Docker Compose locally or on a VPS. Kubernetes in your own cluster.</p>
         <div class="hero-actions"><a class="button button-primary" href="#experience">See the magic <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="currentColor"><path d="M12 .9A11.1 11.1 0 0 0 8.5 22.5c.55.1.76-.24.76-.53v-2.1c-3.1.67-3.75-1.3-3.75-1.3-.5-1.25-1.24-1.58-1.24-1.58-1-.7.08-.68.08-.68 1.12.08 1.7 1.15 1.7 1.15 1 .1 1.69-.68 1.9-.97.1-.73.39-1.22.7-1.5-2.47-.29-5.07-1.24-5.07-5.49 0-1.21.43-2.2 1.14-2.97-.11-.28-.5-1.4.11-2.92 0 0 .94-.3 3.05 1.14a10.62 10.62 0 0 1 5.55 0c2.12-1.44 3.05-1.14 3.05-1.14.61 1.52.22 2.64.1 2.92.72.77 1.15 1.76 1.15 2.97 0 4.26-2.61 5.19-5.1 5.48.4.35.75 1.02.75 2.06v3.05c0 .3.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg> Follow the build</a></div>
         <p class="hero-note"><span class="tiny-spark">✳</span> Product preview <span class="line-dot">·</span> Compiler in planning</p>
       </div>
@@ -45,9 +46,9 @@
         <div class="terminal-card" id="hero-terminal">
           <div class="terminal-head"><div class="terminal-dots"><span></span><span></span><span></span></div><span class="terminal-path">~/projects/shop</span><span class="terminal-corner">DEMO</span></div>
           <div class="terminal-stage"><span class="terminal-prompt">$</span> <span>magic-infra plan --target docker</span></div>
-          <div class="terminal-row"><span class="term-success">✓</span> Spring Boot project detected</div>
-          <div class="terminal-row"><span class="term-success">✓</span> PostgreSQL intent confirmed</div>
-          <div class="terminal-row"><span class="term-success">✓</span> Deployment plan generated</div>
+          <div class="terminal-row"><span class="term-success">✓</span> Spring Boot API needs PostgreSQL</div>
+          <div class="terminal-row"><span class="term-success">✓</span> Managed PostgreSQL confirmed</div>
+          <div class="terminal-row"><span class="term-success">✓</span> compose.yaml generated for review</div>
           <div class="terminal-rule"></div>
           <div class="terminal-summary"><span><span class="term-signal">●</span> Standard artifacts</span><span class="summary-tag">YOU OWN THE OUTPUT</span></div>
         </div>
@@ -55,11 +56,33 @@
       </div>
     </section>
 
-    <div class="trustbar"><div class="container trustbar-inner"><span class="trustbar-lead">THE CORE PROMISE</span><div><span class="trust-symbol">01</span> Your code</div><span class="trust-sep">/</span><div><span class="trust-symbol">02</span> Your infrastructure</div><span class="trust-sep">/</span><div><span class="trust-symbol">03</span> Your rules</div><span class="trust-end">↗</span></div></div>
+    <section class="run-paths" aria-labelledby="run-paths-title">
+      <div class="container">
+        <p class="overline"><span>ONE APPLICATION MODEL</span><span>THREE WAYS TO RUN IT</span></p>
+        <h2 id="run-paths-title">Start where you are.</h2>
+        <div class="run-path-grid">
+          <article class="run-path">
+            <p class="run-path-label"><span aria-hidden="true">01 /</span> LOCAL · DOCKER COMPOSE</p>
+            <h3>Get a local stack running.</h3>
+            <p>Bring up your app and its dependencies with Compose. Give teammates the same setup without hand-writing a stack for each project.</p>
+          </article>
+          <article class="run-path">
+            <p class="run-path-label"><span aria-hidden="true">02 /</span> VPS · DOCKER COMPOSE</p>
+            <h3>Ship to a server you own.</h3>
+            <p>Take reviewed Compose files to your VPS. Keep your volumes, secrets and deployment workflow under your control.</p>
+          </article>
+          <article class="run-path">
+            <p class="run-path-label"><span aria-hidden="true">03 /</span> CLUSTER · KUBERNETES</p>
+            <h3>Build on the cluster you have.</h3>
+            <p>Add a service to your own cluster or reuse an existing database. When the app changes, regenerate the manifests and review the diff in Git.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
     <section class="section demo-section" id="experience" aria-labelledby="experience-title">
       <div class="container">
-        <div class="section-intro small reveal"><p class="overline"><span>01 / TRY THE WORKFLOW</span><span>SPRING BOOT → POSTGRESQL</span></p><h2 id="experience-title">Read the signals.<br/><em>Respect the intent.</em></h2><p>A PostgreSQL driver is a clue. You decide whether the app gets a managed database or connects to one you already run. Then switch targets and see how the same intent changes the output.</p></div>
+        <div class="section-intro small reveal"><p class="overline"><span>01 / TRY THE WORKFLOW</span><span>SPRING BOOT → POSTGRESQL</span></p><h2 id="experience-title">Read the signals.<br/><em>Respect the intent.</em></h2><p>The same Spring app can run with its own PostgreSQL or connect to one you already run. The code reveals the need; you decide who manages it. Switch targets to see what magic-infra would generate.</p></div>
         <div class="experience-grid reveal">
           <div class="experience-side">
             <p class="small-cap">ONE COMPOSABLE WORKFLOW</p>
@@ -218,6 +241,6 @@ spring:
 
     <section class="section endgame container"><div class="end-card reveal"><div class="end-ambient" aria-hidden="true"></div><div class="end-icon" aria-hidden="true">✳</div><p class="end-overline">THE FUTURE IS NOT ANOTHER CONTROL PANEL.</p><h2>Make the infra.<br/><em>Keep the freedom.</em></h2><p>Help build an open-source infrastructure compiler that understands application intent, respects explicit choices, and never holds your stack hostage.</p><div class="end-actions"><a class="button button-primary" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">Explore on GitHub <span>↗</span></a><a class="button button-outline" href="#architecture">Revisit the architecture <span>↑</span></a></div><div class="end-bottom"><span>NO MANDATORY SAAS</span><span>PORTABLE INTENT</span><span>OWN YOUR OUTPUT</span></div></div></section>
   </main>
-  <footer class="footer container"><a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true">✳</span><span>magic<span class="brand-divider">/</span>infra</span></a><p>Infrastructure that gets your code.<br/>An open-source project in planning.</p><div class="footer-right"><a href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#top">Back to top ↑</a><button class="motion-toggle" type="button" aria-pressed="false">Pause animations</button><span>© 2026 magic-infra</span></div></footer>
+  <footer class="footer container"><a class="brand footer-brand" href="#top"><img class="brand-mark" src="assets/favicon.svg" width="34" height="34" alt="" /><span>magic<span class="brand-divider">/</span>infra</span></a><p>Infrastructure that gets your code.<br/>An open-source project in planning.</p><div class="footer-right"><a href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#top">Back to top ↑</a><button class="motion-toggle" type="button" aria-pressed="false">Pause animations</button><span>© 2026 magic-infra</span></div></footer>
 </body>
 </html>
