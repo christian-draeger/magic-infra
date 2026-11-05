@@ -4,17 +4,17 @@
   "type": "object",
   "properties": {
     "schemaVersion": { "const": "spring-adapter-request/v1alpha1" },
-    "applicationId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+    "applicationId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}(?![\\s\\S])" },
     "module": {
       "type": "string",
       "maxLength": 240,
-      "pattern": "^:(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*(?::[A-Za-z0-9_-][A-Za-z0-9_.-]*)*)?$"
+      "pattern": "^:(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*(?::[A-Za-z0-9_-][A-Za-z0-9_.-]*)*)?(?![\\s\\S])"
     },
     "language": { "enum": ["java", "kotlin"] },
     "profiles": {
       "type": "array",
       "maxItems": 32,
-      "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$" }
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}(?![\\s\\S])" }
     },
     "sourceRoots": {
       "type": "array",
@@ -22,7 +22,7 @@
       "items": {
         "type": "string",
         "maxLength": 240,
-        "pattern": "^(?!(?:.*/)?\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+        "pattern": "^(?!(?:.*/)?\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*(?![\\s\\S])"
       }
     },
     "dependencies": {
@@ -31,7 +31,7 @@
       "items": {
         "type": "string",
         "maxLength": 240,
-        "pattern": "^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+~-]+$"
+        "pattern": "^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+~-]+(?![\\s\\S])"
       }
     }
   },

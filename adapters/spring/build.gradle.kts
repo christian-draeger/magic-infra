@@ -6,6 +6,9 @@ plugins {
 
 dependencies {
     implementation("com.google.code.gson:gson:2.14.0")
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.16"))
+    implementation("org.springframework.boot:spring-boot")
+    implementation("org.yaml:snakeyaml")
 }
 
 kotlin {

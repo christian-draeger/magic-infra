@@ -12,13 +12,21 @@ import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.result.ResolvedVariantResult
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.nio.file.Files
+
+private const val RESOURCE_ROOT = "src/main/resources"
 
 class SpringEvidencePlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -34,6 +42,10 @@ class SpringEvidencePlugin : Plugin<Project> {
                 }.orElse(emptyList()))
                 it.coordinates.set(project.configurations.getByName("runtimeClasspath")
                     .incoming.resolutionResult.rootComponent.map(::resolvedCoordinates))
+                it.projectDirectory.set(project.layout.projectDirectory)
+                it.configurationFiles.from(project.fileTree(RESOURCE_ROOT) { files ->
+                    files.include("**/*.properties", "**/*.yaml", "**/*.yml")
+                })
                 it.output.set(project.layout.buildDirectory.file("magic-infra/evidence.json"))
             }
             project.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
@@ -50,14 +62,17 @@ abstract class SpringEvidenceTask : DefaultTask() {
     @get:Input abstract val language: Property<String>
     @get:Input abstract val profiles: ListProperty<String>
     @get:Input abstract val coordinates: ListProperty<String>
+    @get:Internal abstract val projectDirectory: DirectoryProperty
+    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val configurationFiles: ConfigurableFileCollection
     @get:OutputFile abstract val output: RegularFileProperty
 
     @TaskAction
     fun collect() {
         val request = AnalysisRequest(applicationId.get(), module.get(), language.get(), profiles.get(),
-            listOf("src/main/resources"), coordinates.get())
+            listOf(RESOURCE_ROOT), coordinates.get())
         val document = try {
-            evidence(request)
+            evidence(request, projectDirectory.get().asFile.toPath())
         } catch (failure: ProtocolFailure) {
             val hint = if (failure.code == "MI_SPRING_APPLICATION_ID") {
                 " Use -PmagicInfra.applicationId=shop to override the module name."

@@ -1,6 +1,7 @@
 package dev.magicinfra.spring
 
 import com.google.gson.GsonBuilder
+import java.nio.file.Path
 
 internal const val REQUEST_VERSION = "spring-adapter-request/v1alpha1"
 private val json = GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
@@ -23,6 +24,8 @@ private val profile = Regex("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 private val pathSegment = Regex("[A-Za-z0-9_.-]+")
 private val coordinate = Regex("[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+~-]+")
 
+internal fun validProfiles(profiles: List<String>): Boolean = profiles.size <= 32 && profiles.all(profile::matches)
+
 internal fun validateContext(request: AnalysisRequest) {
     fun check(condition: Boolean, message: String) {
         if (!condition) throw ProtocolFailure("MI_SPRING_INVALID_REQUEST", message)
@@ -33,7 +36,7 @@ internal fun validateContext(request: AnalysisRequest) {
     check(request.module.length <= 240 && modulePath.matches(request.module),
         "Set module to a Gradle project path up to 240 characters, such as :api.")
     check(request.language in setOf("java", "kotlin"), "Set language to java or kotlin.")
-    check(request.profiles.size <= 32 && request.profiles.all(profile::matches),
+    check(validProfiles(request.profiles),
         "Use at most 32 profile names with letters, digits, dots, underscores or hyphens.")
     check(request.sourceRoots.size <= 32 && request.sourceRoots.all { root ->
         root.length <= 240 && root.split('/').all { it !in setOf(".", "..") && pathSegment.matches(it) }
@@ -55,8 +58,9 @@ private val rules = mapOf(
 internal fun dependencyOfInterest(group: String, name: String): Boolean =
     "$group:$name" in rules || "$group:$name" == "org.springframework.boot:spring-boot"
 
-internal fun evidence(request: AnalysisRequest): String {
+internal fun evidence(request: AnalysisRequest, project: Path): String {
     validateContext(request)
+    val configuration = inspectConfig(request, project)
     val coordinates = request.dependencies.distinct().sorted()
     val bootVersion = coordinates.singleOrNull { it.substringBeforeLast(':') == "org.springframework.boot:spring-boot" }
         ?.substringAfterLast(':')
@@ -92,18 +96,19 @@ internal fun evidence(request: AnalysisRequest): String {
     }
     return json.toJson(linkedMapOf(
         "schemaVersion" to "evidence/v1alpha1",
-        "adapter" to mapOf("id" to "spring-boot", "version" to "0.1.0-alpha.1", "rulesVersion" to "1"),
+        "adapter" to mapOf("id" to "spring-boot", "version" to "0.1.0-alpha.2", "rulesVersion" to "2"),
         "application" to application,
         "analysis" to mapOf(
-            "profiles" to request.profiles.distinct().sorted(),
-            "environmentScope" to "explicit-snapshot",
+            "profiles" to configuration.profiles,
+            "environmentScope" to if (configuration.evaluated) "local-supported" else "explicit-snapshot",
             "limitations" to listOf(
                 "Only selected components on the resolved runtime classpath are inspected.",
-                "Spring configuration, application classes and resource ownership are outside this snapshot.",
+                "Only project-local properties and YAML in the requested roots are supported.",
+                "Application classes, dynamic property sources, and resource ownership are outside this snapshot.",
             ),
         ),
         "services" to listOf(mapOf("id" to request.applicationId, "module" to request.module, "buildSystem" to "gradle")),
-        "findings" to findings,
-        "diagnostics" to diagnostics,
+        "findings" to findings + configuration.findings,
+        "diagnostics" to diagnostics + configuration.diagnostics,
     )) + "\n"
 }
