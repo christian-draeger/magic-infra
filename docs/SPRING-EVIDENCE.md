@@ -22,6 +22,7 @@ build. The task writes `build/magic-infra/evidence.json` in each module.
 `-PmagicInfra.applicationId=shop` overrides the default module name for a
 single-module invocation. `-PmagicInfra.profiles=dev,test` records explicit
 analysis scope. Profiles are metadata at this stage.
+Use the override for Gradle module names that are not lowercase service IDs.
 
 The task selects module coordinates from `runtimeClasspath`, including
 transitive dependencies through project modules. Build dependencies,
@@ -49,12 +50,14 @@ compiler/evidence/build/install/evidence-check/bin/evidence-check /tmp/shop-evid
 
 The adapter takes exactly one UTF-8 JSON object on stdin. The same adapter
 logic serves the Gradle task. See the
-[example request](../examples/spring-evidence/request.json).
+[request schema](../schemas/spring-adapter-request.v1alpha1.schema.json),
+[example request](../examples/spring-evidence/request.json) and
+[process ADR](adr/0003-spring-evidence-process.md).
 
 | Field | Meaning |
 | --- | --- |
 | `schemaVersion` | `spring-adapter-request/v1alpha1` |
-| `applicationId`, `module`, `language` | Lowercase app/service ID, Gradle project path and `java` or `kotlin` |
+| `applicationId`, `module`, `language` | Lowercase app/service ID, Gradle project path up to 240 characters and `java` or `kotlin` |
 | `profiles`, `sourceRoots` | Explicit profile names and project-relative roots. The dependency adapter validates the scope without reading those roots. |
 | `dependencies` | Resolved `group:name:version` coordinates for the selected module. Supply dependency facts without credentials or source contents. |
 
@@ -63,6 +66,19 @@ rule versions. Findings identify a service, kind, certainty and Gradle
 coordinate. Diagnostics may carry a source kind and reference, and a
 project-relative path and line when available. A fixture without a known
 Spring Boot runtime version emits a warning and leaves the version absent.
+The [Evidence schema](../schemas/evidence.v1alpha1.schema.json) defines the
+diagnostic source shape and the `info`, `warning`, and `error` severities.
+
+| Adapter code | Severity | Meaning |
+| --- | --- | --- |
+| `MI_SPRING_BOOT_RUNTIME_UNKNOWN` | warning | The selected runtime graph does not identify a unique Boot version. |
+| `MI_SPRING_AMBIGUOUS_COMPONENT` | error | Multiple versions of a recognized component were supplied. |
+| `MI_SPRING_APPLICATION_ID` | error | The service ID is not a lowercase identifier starting with a letter. |
+| `MI_SPRING_INVALID_REQUEST` | error | The request is malformed or violates a field constraint. |
+| `MI_SPRING_REQUEST_VERSION` | error | The adapter does not support the request version. |
+| `MI_SPRING_USAGE` | error | The standalone adapter takes input on stdin. |
+| `MI_SPRING_IO` | error | The standalone adapter could not read stdin. |
+| `MI_SPRING_RUNTIME_UNRESOLVED` | error | Gradle could not resolve a selected runtime dependency. |
 
 On failure, stdout is empty and the adapter writes a JSON diagnostic with
 `code`, `severity` and `message` to stderr. The exit codes are:

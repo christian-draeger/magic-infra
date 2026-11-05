@@ -27,8 +27,11 @@ internal fun validateContext(request: AnalysisRequest) {
     fun check(condition: Boolean, message: String) {
         if (!condition) throw ProtocolFailure("MI_SPRING_INVALID_REQUEST", message)
     }
-    check(applicationId.matches(request.applicationId), "Set applicationId to a lowercase identifier starting with a letter.")
-    check(modulePath.matches(request.module), "Set module to a Gradle project path, such as :api.")
+    if (!applicationId.matches(request.applicationId)) {
+        throw ProtocolFailure("MI_SPRING_APPLICATION_ID", "Set applicationId to a lowercase identifier starting with a letter.")
+    }
+    check(request.module.length <= 240 && modulePath.matches(request.module),
+        "Set module to a Gradle project path up to 240 characters, such as :api.")
     check(request.language in setOf("java", "kotlin"), "Set language to java or kotlin.")
     check(request.profiles.size <= 32 && request.profiles.all(profile::matches),
         "Use at most 32 profile names with letters, digits, dots, underscores or hyphens.")

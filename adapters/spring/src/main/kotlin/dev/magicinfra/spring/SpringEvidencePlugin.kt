@@ -59,7 +59,10 @@ abstract class SpringEvidenceTask : DefaultTask() {
         val document = try {
             evidence(request)
         } catch (failure: ProtocolFailure) {
-            throw GradleException("${failure.code}: ${failure.message}")
+            val hint = if (failure.code == "MI_SPRING_APPLICATION_ID") {
+                " Use -PmagicInfra.applicationId=shop to override the module name."
+            } else ""
+            throw GradleException("${failure.code}: ${failure.message}$hint")
         }
         val path = output.get().asFile.toPath()
         Files.createDirectories(path.parent)

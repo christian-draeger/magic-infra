@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:magic-infra:schema:spring-adapter-request:v1alpha1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": "spring-adapter-request/v1alpha1" },
+    "applicationId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+    "module": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^:(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*(?::[A-Za-z0-9_-][A-Za-z0-9_.-]*)*)?$"
+    },
+    "language": { "enum": ["java", "kotlin"] },
+    "profiles": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$" }
+    },
+    "sourceRoots": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "maxLength": 240,
+        "pattern": "^(?!(?:.*/)?\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {
+        "type": "string",
+        "maxLength": 240,
+        "pattern": "^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+~-]+$"
+      }
+    }
+  },
+  "required": ["schemaVersion", "applicationId", "module", "language", "profiles", "sourceRoots", "dependencies"],
+  "additionalProperties": false
+}

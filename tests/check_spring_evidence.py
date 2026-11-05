@@ -5,6 +5,8 @@ import copy
 import json
 import subprocess
 
+from jsonschema import ValidationError
+
 from test_contracts import ROOT, read_json, validate_schema
 
 FIXTURE = ROOT / "examples" / "spring-evidence"
@@ -37,6 +39,7 @@ def json_bytes(value):
 
 def check_protocol():
     request = read_json(FIXTURE / "request.json")
+    validate_schema(request, "spring-adapter-request")
     output = success(invoke([ADAPTER], json_bytes(request)))
     assert output == success(invoke([ADAPTER], json_bytes(request)))
     doc = json.loads(output)
@@ -48,10 +51,19 @@ def check_protocol():
 
     unsupported_request = {**request, "schemaVersion": "spring-adapter-request/v2"}
     rejected(invoke([ADAPTER], json_bytes(unsupported_request)), 3, "MI_SPRING_REQUEST_VERSION", "v1alpha1")
-    rejected(invoke([ADAPTER], json_bytes({**request, "sourceRoots": ["../outside"]})), 2,
-             "MI_SPRING_INVALID_REQUEST", "project-relative")
-    rejected(invoke([ADAPTER], json_bytes({**request, "password": "sample-secret-value"})), 2,
-             "MI_SPRING_INVALID_REQUEST")
+    for change, message in [
+        ({"sourceRoots": ["../outside"]}, "project-relative"),
+        ({"module": ":a" * 5000}, "240 characters"),
+        ({"password": "sample-secret-value"}, "Supply exactly"),
+    ]:
+        invalid = {**request, **change}
+        try:
+            validate_schema(invalid, "spring-adapter-request")
+        except ValidationError:
+            pass
+        else:
+            raise AssertionError(f"The request schema accepted {change.keys()}")
+        rejected(invoke([ADAPTER], json_bytes(invalid)), 2, "MI_SPRING_INVALID_REQUEST", message)
     rejected(invoke([ADAPTER], b'{"bad": "sample-secret-value"'), 2, "MI_SPRING_INVALID_REQUEST")
 
     duplicate = output.replace(b'"application": {', b'"application": {}, "application": {', 1)
