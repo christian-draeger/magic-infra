@@ -2,11 +2,14 @@ package dev.magicinfra.compiler.evidence
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
+import com.fasterxml.jackson.core.util.DefaultIndenter
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.dialect.Dialects
 
 internal object ApplicationModelResolver {
     private val mapper = JsonMapper.builder().build()
+    private val writer = mapper.writer(DefaultPrettyPrinter().withObjectIndenter(DefaultIndenter("  ", "\n")))
     private val schema by lazy {
         val registry = SchemaRegistry.withDialect(Dialects.getDraft202012())
         checkNotNull(ApplicationModelResolver::class.java.getResourceAsStream("/application.v1alpha1.schema.json")).use {
@@ -26,6 +29,14 @@ internal object ApplicationModelResolver {
             throw EvidenceRejected("MI_APPLICATION_SERVICE_MISMATCH", "Declare exactly the service IDs present in Evidence under /services.")
         }
         val adapterId = evidence.path("adapter").path("id").asText()
+        if (adapterId.length > 128) {
+            throw EvidenceRejected("MI_APPLICATION_PROVENANCE_LENGTH", "Keep the Evidence /adapter/id at or below 128 characters.")
+        }
+        for (serviceId in serviceIds) {
+            if (evidenceServices.getValue(serviceId).path("module").asText().length > 240) {
+                throw EvidenceRejected("MI_APPLICATION_PROVENANCE_LENGTH", "Keep the Evidence module for service $serviceId at or below 240 characters.")
+            }
+        }
         val resources = declaration.path("resources")
         val bindings = declaration.path("bindings").sortedBy { it.path("serviceId").asText() }
         val byResource = bindings.groupBy { it.path("resourceId").asText() }
@@ -79,14 +90,14 @@ internal object ApplicationModelResolver {
                     suggestions.getValue(binding.path("serviceId").asText()).findingIds
                 }.distinct().sorted()
                 mapOf("resourceId" to resourceId, "findingIds" to contributingFindings,
-                    "declarationRef" to "infra.yaml#/resources/$resourceId")
+                    "declarationRef" to "#/resources/$resourceId")
             },
         )
         val document = mapper.valueToTree<JsonNode>(model)
         if (schema.validate(document).isNotEmpty()) {
             throw EvidenceRejected("MI_APPLICATION_SCHEMA", "The resolver produced an invalid Application Model.", 1)
         }
-        return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(document) + "\n"
+        return writer.writeValueAsString(document) + "\n"
     }
 
     private fun normalizeResource(id: String, resource: JsonNode): Map<String, Any> {

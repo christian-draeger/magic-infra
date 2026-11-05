@@ -207,11 +207,15 @@ def check_application_model():
         actual = json.loads(output)
         validate_schema(actual, "application")
         expected = read_json(base / "expected" / mode / "application.json")
-        expected["provenance"][0]["declarationRef"] = "infra.yaml#/resources/primary-db"
+        expected["provenance"][0]["declarationRef"] = "#/resources/primary-db"
         assert actual == expected, actual
         if mode == "external":
             assert "storage" not in actual["resources"][0]["settings"]
             assert actual["resources"][0]["connection"]["endpointRef"] == "SHOP_DB_URL"
+        library = READER.parent.parent / "lib"
+        java = ["java", "-Dline.separator=\r\n", "-cp", os.pathsep.join(str(path) for path in sorted(library.glob("*.jar"))),
+                "dev.magicinfra.compiler.evidence.EvidenceMainKt"]
+        assert output == success(invoke(java + ["resolve", evidence_path, declaration]))
 
     managed = yaml.safe_load((directory / "managed.yaml").read_text())
 
@@ -230,6 +234,12 @@ def check_application_model():
     conflict = {**evidence, "findings": [mysql]}
     rejected(invoke(command + ["-", directory / "managed.yaml"], json_bytes(conflict)), 4,
              "MI_APPLICATION_VENDOR_CONFLICT", "api", "mysql", "postgresql")
+    for overlong, source in [
+        ({**evidence, "adapter": {**evidence["adapter"], "id": "a" * (512 * 1024)}}, "/adapter/id"),
+        ({**evidence, "services": [{**evidence["services"][0], "module": "a" * 241}]}, "module for service api"),
+    ]:
+        rejected(invoke(command + ["-", directory / "managed.yaml"], json_bytes(overlong)), 2,
+                 "MI_APPLICATION_PROVENANCE_LENGTH", source)
 
     multi = copy.deepcopy(managed)
     multi["services"]["worker"] = {"imageRef": "example.invalid/shop/worker:fixture", "port": 8081}
@@ -449,6 +459,13 @@ def check_bytecode(gradle):
         assert diagnostics["MI_SPRING_BYTECODE_CONDITIONAL_BEAN_UNKNOWN"]["source"] == bean["source"]
         if language == "java":
             assert diagnostics["MI_SPRING_BYTECODE_PROPERTY_SOURCE_UNKNOWN"]["source"]["reference"] == "example.JavaDatabase"
+            declaration = ROOT / "examples/infra/spring-java.yaml"
+            model = json.loads(success(invoke([READER, "resolve", path, declaration])))
+            validate_schema(model, "application")
+            assert model["application"]["id"] == "java-app"
+            assert model["services"][0]["source"]["module"] == ":java-app"
+            assert model["resources"][0]["management"] == "external"
+            assert "f-config-url" in model["provenance"][0]["findingIds"]
     print("Java/Kotlin JVM annotation, conditional bean and provenance checks passed.")
 
 

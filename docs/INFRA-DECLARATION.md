@@ -54,11 +54,23 @@ compiler/evidence/build/install/evidence-check/bin/evidence-check \
 ```
 
 The command emits a canonical `application/v1alpha1` document. Each
-resource retains its declaration pointer and the IDs of its contributing
+resource retains a document-relative declaration pointer and the IDs of its contributing
 findings. Managed resources carry storage intent. External resources carry
 an endpoint reference and remain external in the model. Invalid
 references, missing bindings and vendor conflicts stop resolution before
 any model is emitted.
+
+The Spring adapter currently uses the module's application ID as its
+single service ID. The [Java fixture declaration](../examples/infra/spring-java.yaml)
+shows the IDs used by the real Gradle adapter. Its image reference is a
+placeholder for model validation.
+
+```sh
+gradle -p examples/spring-evidence :java-app:springEvidence
+compiler/evidence/build/install/evidence-check/bin/evidence-check resolve \
+  examples/spring-evidence/java-app/build/magic-infra/evidence.json \
+  examples/infra/spring-java.yaml
+```
 
 ## Migrate the M0 spike fixture
 
