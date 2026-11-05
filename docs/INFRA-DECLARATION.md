@@ -33,7 +33,9 @@ compiler/evidence/build/install/evidence-check/bin/evidence-check \
 
 The validator accepts one UTF-8 YAML mapping, or stdin with `-`. It checks
 the version, property rules and binding references. Mapping keys must be
-unique strings. Use explicit values in place of YAML anchors and merge keys.
+unique strings. The port uses an unquoted decimal integer. Other plain
+scalars are text. Use explicit values in place of YAML tags, anchors,
+aliases and merge keys.
 Success is silent. Invalid input exits with status `2`, an unknown
 version with status `3`, and input I/O failure with status `1`.
 
@@ -43,7 +45,7 @@ The declaration supplies ownership and retention. Evidence can suggest a
 binding and explain incompatibilities. The resolver will stop when an
 effective configuration or an incompatible driver observation conflicts with
 the declared resource. A matching driver may coexist with unused drivers.
-An empty resource and binding list keeps ownership undecided for an observed
+Empty resources and bindings keep ownership undecided for an observed
 database. A database-dependent plan needs an explicit binding.
 
 ## Migrate the M0 spike fixture

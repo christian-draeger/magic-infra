@@ -168,11 +168,26 @@ def check_infra_declarations():
         (external.replace("    port: 8080", "    port: 8080\n    port: 9000"),
          "MI_INFRA_YAML", "line"),
         (external.replace("    port: 8080", "    port: 1970-01-01T00:00:01Z"),
-         "MI_INFRA_YAML", "mapping"),
+         "MI_INFRA_SCHEMA", "/services/api/port"),
+        (external.replace("    port: 8080", "    port: 1:20"),
+         "MI_INFRA_SCHEMA", "/services/api/port"),
+        (external.replace("    port: 8080", "    port: !!float sample-secret-value"),
+         "MI_INFRA_YAML_FEATURE", "tags"),
+        (external.replace("    port: 8080", "    port: !!int sample-secret-value"),
+         "MI_INFRA_YAML_FEATURE", "tags"),
         (external.replace("  api:", "  api: &api"),
          "MI_INFRA_YAML_FEATURE", "anchors"),
+        (external.replace("    secretRef:", "    sample-secret-value: nope\n    secretRef:"),
+         "MI_INFRA_SCHEMA", "/resources/primary-db"),
+        (external.replace("example.invalid/shop/api:fixture", "a/" * 40000 + "a:t"),
+         "MI_INFRA_SCHEMA", "/services/api/imageRef"),
     ]:
         rejected(invoke(validator + ["-"], source.encode()), 2, code, field)
+    omap = external.replace("  primary-db:\n", "  primary-db: !!omap\n")
+    omap = omap.replace("    management: external", "    management: external\n    management: managed")
+    omap = "\n".join("    - " + line[4:] if line.startswith("    ") else line for line in omap.splitlines())
+    rejected(invoke(validator + ["-"], omap.encode()), 2, "MI_INFRA_YAML_FEATURE", "tags")
+    assert success(invoke(validator + ["-"], external.replace("  api:", "  no:").replace("serviceId: api", "serviceId: no").encode())) == b""
     historical = invoke(validator + [ROOT / "examples/m0/infra.yaml"])
     rejected(historical, 3, "MI_INFRA_VERSION", "infra/v1alpha2")
     print("Managed/external infra declarations, parser safety and reference checks passed.")
