@@ -73,7 +73,7 @@ workloads do not depend on a magic-infra runtime.
 An adapter should be testable against the Evidence contract without a backend.
 A backend should be testable against IR and plan fixtures without a framework
 adapter. Next.js is the planned test of a second adapter. Backend packaging and
-the public plugin API remain open, as does the
-[compiler implementation language](compiler-language-spike.md). The
-[Score evaluation](PRODUCT.md#what-to-evaluate-first) will check what can be
-shared without losing provenance, ownership or the plan/apply boundary.
+the public plugin API remain open. The
+[language decision](adr/0002-compiler-language.md) selects Kotlin/JVM for the
+compiler. The [Score evaluation](adr/0001-score-interop.md) identifies the
+workload subset that could be exported and the constraints on provisioner reuse.

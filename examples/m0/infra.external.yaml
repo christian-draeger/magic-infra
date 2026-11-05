@@ -1,0 +1,12 @@
+schemaVersion: infra/v1alpha1
+applicationId: shop
+services:
+  api:
+    imageRef: example.invalid/shop/api:fixture
+    port: 8080
+postgres:
+  id: primary-db
+  management: external
+  database: shop
+  secretRef: shop-db-credentials
+  endpointRef: SHOP_DB_URL

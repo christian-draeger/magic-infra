@@ -1,8 +1,8 @@
 # M0: Choose the compiler CLI language
 
-**Status:** Proposed evaluation. Go is the baseline from the original design;
-Kotlin/JVM is a candidate for the compiler, not just the Spring adapter. Decide
-before M0 closes and before starting the production compiler.
+**Status:** Complete. The [decision and measured results](adr/0002-compiler-language.md)
+record why the initial compiler will use Kotlin/JVM. The remainder of this
+document records the evaluation criteria.
 
 The core's first job is to validate local inputs, resolve a graph and write
 deterministic files. It does not sit on the application's request path.

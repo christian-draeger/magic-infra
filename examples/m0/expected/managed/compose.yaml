@@ -1,0 +1,32 @@
+{
+  "name": "shop",
+  "services": {
+    "api": {
+      "env_file": [
+        "./secrets/shop-db-credentials.env"
+      ],
+      "environment": {
+        "SPRING_DATASOURCE_URL": "jdbc:postgresql://primary-db:5432/shop"
+      },
+      "expose": [
+        8080
+      ],
+      "image": "example.invalid/shop/api:fixture"
+    },
+    "primary-db": {
+      "env_file": [
+        "./secrets/shop-db-credentials.env"
+      ],
+      "environment": {
+        "POSTGRES_DB": "shop"
+      },
+      "image": "postgres:16",
+      "volumes": [
+        "primary-db:/var/lib/postgresql/data"
+      ]
+    }
+  },
+  "volumes": {
+    "primary-db": {}
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "applicationId": "shop",
+  "artifacts": [
+    {
+      "kind": "compose-manifest",
+      "path": "compose.yaml"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "SPRING-CONFIG-PLACEHOLDER",
+      "message": "Datasource URL is provided as a runtime reference; ownership must be declared explicitly.",
+      "severity": "warning",
+      "source": {
+        "kind": "spring-property",
+        "path": "src/main/resources/application.yaml",
+        "reference": "spring.datasource.url"
+      }
+    }
+  ],
+  "limitations": [
+    "Compilation preview only.",
+    "Compose does not enforce the declared storage size.",
+    "Single-host Compose cannot provide host failover."
+  ],
+  "mode": "compile-preview",
+  "operations": [
+    {
+      "action": "create",
+      "description": "Resolve PostgreSQL ownership.",
+      "id": "create-primary-db",
+      "requiresApproval": false,
+      "resourceId": "primary-db",
+      "risk": "moderate"
+    },
+    {
+      "action": "bind",
+      "description": "Wire the application to PostgreSQL.",
+      "id": "bind-api",
+      "requiresApproval": false,
+      "resourceId": "api",
+      "risk": "low"
+    }
+  ],
+  "prerequisites": [
+    {
+      "description": "Provide the prebuilt application image.",
+      "id": "oci-image",
+      "required": true
+    },
+    {
+      "description": "Provide the referenced local credentials env file.",
+      "id": "credentials",
+      "required": true
+    }
+  ],
+  "schemaVersion": "plan/v1alpha1",
+  "target": {
+    "backend": "docker-compose",
+    "environment": "dev"
+  }
+}

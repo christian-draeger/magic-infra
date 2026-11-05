@@ -18,6 +18,9 @@ application model should cover three starting points:
 - **An existing Kubernetes cluster:** Add a service, bind infrastructure you
   already operate, and review changes to generated manifests as the app evolves.
 
+The [first user journey](FIRST-USER.md) defines what the initial Compose slice
+must demonstrate.
+
 ## What makes it magic
 
 A PostgreSQL driver is evidence, not permission to create a database. The
@@ -61,13 +64,9 @@ ranking.
 
 ## What to evaluate first
 
-- **M0: Score fit.** Map one Spring/PostgreSQL fixture to Score. Check what
-  carries across for ports, bindings and resources, what needs to stay in
-  Evidence or the Deployment Plan, and whether ownership and retention
-  survive the mapping. Score implementations may provision resources during
-  generation, so any reuse must preserve the boundary between a plan and an
-  apply. Record whether to use Score as an interchange format, reuse parts of
-  an implementation, or keep the models separate.
+- **M0: Score fit.** The [Score evaluation](adr/0001-score-interop.md) keeps
+  the Application Model and leaves room for exporting the portable workload
+  subset after backend parity.
 - **After the first Compose slice:** Try a small Tiltfile that reads generated
   files. Keep live updates in Tilt. After the Kubernetes slice, document how a
   GitOps workflow can deploy generated manifests with retention and pruning

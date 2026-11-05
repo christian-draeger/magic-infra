@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "evidence/v1alpha1",
+  "adapter": {
+    "id": "spring-boot",
+    "version": "0.1.0-draft",
+    "rulesVersion": "0.1.0-draft"
+  },
+  "application": {
+    "id": "shop",
+    "framework": "spring-boot",
+    "language": "kotlin",
+    "frameworkVersion": "unverified-example"
+  },
+  "analysis": {
+    "profiles": [
+      "dev"
+    ],
+    "limitations": [
+      "External property sources and conditional bean activation not evaluated"
+    ],
+    "environmentScope": "local-supported"
+  },
+  "services": [
+    {
+      "id": "api",
+      "module": ":app",
+      "buildSystem": "gradle"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f-jpa-dep",
+      "serviceId": "api",
+      "kind": "dependency",
+      "capability": "database.relational",
+      "source": {
+        "kind": "gradle",
+        "reference": "org.springframework.boot:spring-boot-starter-data-jpa"
+      },
+      "certainty": "observed"
+    },
+    {
+      "id": "f-pg-driver",
+      "serviceId": "api",
+      "kind": "dependency",
+      "capability": "database.relational",
+      "implementation": "postgresql",
+      "source": {
+        "kind": "gradle",
+        "reference": "org.postgresql:postgresql"
+      },
+      "certainty": "observed"
+    },
+    {
+      "id": "f-datasource",
+      "serviceId": "api",
+      "kind": "configuration",
+      "capability": "database.relational",
+      "implementation": "postgresql",
+      "source": {
+        "kind": "spring-property",
+        "reference": "spring.datasource.url",
+        "path": "src/main/resources/application.yaml"
+      },
+      "certainty": "uncertain",
+      "details": {
+        "key": "spring.datasource.url"
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "SPRING-CONFIG-PLACEHOLDER",
+      "severity": "warning",
+      "message": "Datasource URL is provided as a runtime reference; ownership must be declared explicitly.",
+      "source": {
+        "kind": "spring-property",
+        "reference": "spring.datasource.url",
+        "path": "src/main/resources/application.yaml"
+      }
+    }
+  ]
+}

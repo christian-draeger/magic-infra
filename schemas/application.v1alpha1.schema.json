@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:magic-infra:schema:application:v1alpha1",
+  "title": "magic-infra Application v1alpha1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "application/v1alpha1"
+    },
+    "application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "adapter": {
+                "type": "string",
+                "minLength": 1
+              },
+              "module": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "adapter",
+              "module"
+            ],
+            "additionalProperties": false
+          },
+          "build": {
+            "type": "object",
+            "properties": {
+              "imageRef": {
+                "type": "string",
+                "minLength": 1
+              },
+              "strategy": {
+                "type": "string",
+                "enum": [
+                  "prebuilt",
+                  "buildpacks",
+                  "dockerfile",
+                  "undecided"
+                ]
+              }
+            },
+            "required": [
+              "strategy"
+            ],
+            "additionalProperties": false
+          },
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "healthPath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "port"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "build",
+          "runtime"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "postgresql",
+              "rabbitmq",
+              "valkey"
+            ]
+          },
+          "management": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "external",
+              "unmanaged"
+            ]
+          },
+          "deletionPolicy": {
+            "type": "string",
+            "enum": [
+              "retain",
+              "delete-with-approval"
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "minLength": 1
+              },
+              "storage": {
+                "type": "object",
+                "properties": {
+                  "size": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "size"
+                ],
+                "additionalProperties": false
+              },
+              "persistence": {
+                "type": "string",
+                "enum": [
+                  "ephemeral",
+                  "durable"
+                ]
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "connection": {
+            "type": "object",
+            "properties": {
+              "secretRef": {
+                "type": "string",
+                "minLength": 1
+              },
+              "endpointRef": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "secretRef"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "management",
+          "deletionPolicy"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "postgresql"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "connection"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "management": {
+                  "const": "external"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "connection"
+              ],
+              "properties": {
+                "connection": {
+                  "required": [
+                    "secretRef",
+                    "endpointRef"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "resourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contract": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "serviceId",
+          "resourceId",
+          "contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "resourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "findingIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "declarationRef": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "resourceId",
+          "findingIds",
+          "declarationRef"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "application",
+    "services",
+    "resources",
+    "bindings",
+    "provenance"
+  ],
+  "additionalProperties": false
+}
