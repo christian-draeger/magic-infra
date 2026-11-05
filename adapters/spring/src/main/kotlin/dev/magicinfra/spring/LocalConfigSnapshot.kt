@@ -23,7 +23,12 @@ private const val MAX_CONFIG_FILES = 128
 private const val MAX_CONFIG_BYTES = 2 * 1024 * 1024
 private val configDocument = Regex("[A-Za-z0-9_.-]+\\.(?:properties|yaml|yml)")
 
-internal class ConfigUnavailable(val code: String, message: String, val origin: Origin? = null) :
+internal class ConfigUnavailable(
+    val code: String,
+    message: String,
+    val origin: Origin? = null,
+    val reference: String? = null,
+) :
     IllegalArgumentException(message)
 
 internal class LocalConfigSnapshot private constructor(private val documents: Map<String, ByteArray>) : ResourceLoader {
@@ -111,7 +116,7 @@ class LocalConfigImportGuard : ConfigDataLocationResolver<ConfigDataResource> {
             if (!relativeDocument) {
                 throw ConfigUnavailable("MI_SPRING_CONFIG_IMPORT_UNKNOWN",
                     "Use a relative properties or YAML import within the configuration root. External or dynamic imports were not evaluated.",
-                    entry.origin)
+                    entry.origin, "spring.config.import")
             }
         }
         return false

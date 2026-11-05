@@ -4,5 +4,5 @@ org.springframework.boot.context.config.StandardConfigDataLocationResolver
 org.springframework.boot.context.config.ConfigDataLoader=\
 org.springframework.boot.context.config.StandardConfigDataLoader
 org.springframework.boot.env.PropertySourceLoader=\
-org.springframework.boot.env.PropertiesPropertySourceLoader,\
-org.springframework.boot.env.YamlPropertySourceLoader
+dev.magicinfra.spring.LocalPropertiesLoader,\
+dev.magicinfra.spring.LocalYamlLoader

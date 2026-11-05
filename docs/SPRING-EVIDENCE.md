@@ -31,6 +31,9 @@ observations. The task uses graph metadata, so resolving a cold graph may
 fetch metadata. Gradle's `--offline` uses cached metadata. An unresolved
 runtime dependency fails the task with `MI_SPRING_RUNTIME_UNRESOLVED`.
 Only a successful task invocation identifies a valid current output.
+Gradle can reuse its configuration cache. The task rechecks its bounded
+local snapshot on every execution so file changes and newly introduced
+symbolic links cannot leave stale Evidence.
 
 The task leaves the application uncompiled and stopped. Running Gradle
 still runs the project's normal build logic with the invoking user's
@@ -46,7 +49,8 @@ named `application.yml` or `application.yaml`, and their profile variants.
 Spring determines the winning property, including profile-specific overrides
 and document activation with `spring.config.activate.on-profile`. A supplied
 profile list takes precedence over a file's active-profile setting. Later
-profiles win when two profiles define the same setting.
+profiles win when two profiles define the same setting. The reported scope
+uses Spring's default profiles when no active profiles were selected.
 
 A local document can import a relative `.properties`, `.yml`, or `.yaml`
 file from its own directory or a subdirectory. `optional:` allows the file
@@ -57,8 +61,10 @@ import makes the effective configuration unknown. The adapter reads up to
 only this in-memory snapshot. It has no application-defined loaders, host
 environment variables, JVM system properties or live secret sources.
 
-Local placeholders and defaults can resolve from the snapshot. Missing
-placeholders produce an uncertain finding. The adapter only evaluates
+Imports, profile settings and activation controls require literal values.
+Local placeholders and defaults can resolve in datasource properties within
+bounded lookup and expansion limits. Unresolved placeholders produce an
+uncertain finding. The adapter only evaluates
 `spring.datasource.url`, `spring.datasource.driver-class-name`, and
 `spring.datasource.jndi-name` for database evidence. It records the
 recognized database family, key, file and line when available. The Evidence
@@ -109,7 +115,8 @@ diagnostic source shape and the `info`, `warning`, and `error` severities.
 | `MI_SPRING_IO` | error | The standalone adapter could not read stdin. |
 | `MI_SPRING_RUNTIME_UNRESOLVED` | error | Gradle could not resolve a selected runtime dependency. |
 | `MI_SPRING_CONFIG_IMPORT_UNKNOWN` | warning | An import is outside the supported local scope. |
-| `MI_SPRING_CONFIG_PLACEHOLDER_UNKNOWN` | warning | A datasource placeholder did not resolve locally. |
+| `MI_SPRING_CONFIG_CONTROL_UNKNOWN` | warning | A ConfigData control used a placeholder. |
+| `MI_SPRING_CONFIG_PLACEHOLDER_UNKNOWN` | warning | A datasource placeholder did not resolve within the local scope and limits. |
 | `MI_SPRING_CONFIG_CUSTOM_DATASOURCE_UNKNOWN` | warning | A JNDI datasource needs runtime configuration. |
 | `MI_SPRING_CONFIG_DATASOURCE_UNKNOWN` | warning | The datasource implementation could not be identified. |
 | `MI_SPRING_CONFIG_INVALID`, `MI_SPRING_CONFIG_READ` | warning | Local configuration could not be processed or read. |

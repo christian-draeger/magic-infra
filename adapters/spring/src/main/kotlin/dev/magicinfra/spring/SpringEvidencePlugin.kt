@@ -11,19 +11,15 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.result.ResolvedVariantResult
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
-import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
 import java.nio.file.Files
 
 private const val RESOURCE_ROOT = "src/main/resources"
@@ -43,9 +39,6 @@ class SpringEvidencePlugin : Plugin<Project> {
                 it.coordinates.set(project.configurations.getByName("runtimeClasspath")
                     .incoming.resolutionResult.rootComponent.map(::resolvedCoordinates))
                 it.projectDirectory.set(project.layout.projectDirectory)
-                it.configurationFiles.from(project.fileTree(RESOURCE_ROOT) { files ->
-                    files.include("**/*.properties", "**/*.yaml", "**/*.yml")
-                })
                 it.output.set(project.layout.buildDirectory.file("magic-infra/evidence.json"))
             }
             project.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
@@ -55,7 +48,7 @@ class SpringEvidencePlugin : Plugin<Project> {
     }
 }
 
-@CacheableTask
+@UntrackedTask(because = "Analysis walks and validates its own bounded snapshot, including symbolic links.")
 abstract class SpringEvidenceTask : DefaultTask() {
     @get:Input abstract val applicationId: Property<String>
     @get:Input abstract val module: Property<String>
@@ -63,8 +56,6 @@ abstract class SpringEvidenceTask : DefaultTask() {
     @get:Input abstract val profiles: ListProperty<String>
     @get:Input abstract val coordinates: ListProperty<String>
     @get:Internal abstract val projectDirectory: DirectoryProperty
-    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val configurationFiles: ConfigurableFileCollection
     @get:OutputFile abstract val output: RegularFileProperty
 
     @TaskAction

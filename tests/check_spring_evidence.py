@@ -108,7 +108,7 @@ def check_config():
         (["dev", "test"], "h2", "application-test.yaml"),
     ]:
         doc = analyze(FIXTURE / "java-app", profiles)
-        assert doc["analysis"]["profiles"] == profiles
+        assert doc["analysis"]["profiles"] == (profiles or ["default"])
         assert doc["analysis"]["environmentScope"] == "local-supported", doc["diagnostics"]
         finding = next(finding for finding in doc["findings"] if finding["kind"] == "configuration")
         assert finding["implementation"] == implementation
@@ -121,11 +121,44 @@ def check_config():
         project = Path(directory)
         config = project / "src/main/resources/application.properties"
         config.parent.mkdir(parents=True)
+        config.write_text("spring.profiles.default=staging\n")
+        staging = config.with_name("application-staging.properties")
+        staging.write_text("demo.itemPrice=jdbc:postgresql://sample-secret-value.invalid/app\n"
+                           "spring.datasource.url=${demo.item-price}\n")
+        doc = analyze(project, [])
+        assert doc["analysis"]["profiles"] == ["staging"]
+        assert doc["findings"][-1]["implementation"] == "postgresql", doc["findings"]
+        staging.unlink()
+
         config.write_text("spring.datasource.url=${MI_MISSING_DB}\n")
         doc = analyze(project, [])
         assert doc["findings"][-1]["certainty"] == "uncertain"
         assert "implementation" not in doc["findings"][-1]
         assert doc["diagnostics"][-1]["code"] == "MI_SPRING_CONFIG_PLACEHOLDER_UNKNOWN"
+
+        for links, repeated in ((5000, False), (40, True)):
+            chain = ["spring.datasource.url=${k0}"]
+            for i in range(links):
+                next_link = "${k%d}" % (i + 1)
+                chain.append(f"k{i}={next_link * (2 if repeated else 1)}")
+            chain.append(f"k{links}=sample-secret-value")
+            config.write_text("\n".join(chain))
+            doc = analyze(project, [])
+            assert doc["findings"][-1]["certainty"] == "uncertain"
+            assert doc["diagnostics"][-1]["code"] == "MI_SPRING_CONFIG_PLACEHOLDER_UNKNOWN"
+
+        secret_file = config.with_name("sample-secret-value.properties")
+        secret_file.write_text("spring.datasource.url=jdbc:postgresql://example.invalid/test\n")
+        for control in ("spring.profiles.active", "spring.profiles.default", "spring.profiles.include[0]",
+                        "spring.profiles.group.dev[0]", "spring.config.activate.on-profile", "spring.config.import[0]"):
+            config.write_text(f"{control}=${{spring.datasource.password}}\n"
+                              "spring.datasource.password=sample-secret-value.properties\n")
+            doc = analyze(project, [])
+            assert doc["analysis"]["environmentScope"] == "explicit-snapshot"
+            expected = "MI_SPRING_CONFIG_IMPORT_UNKNOWN" if control.startswith("spring.config.import") else (
+                "MI_SPRING_CONFIG_CONTROL_UNKNOWN")
+            assert doc["diagnostics"][-1]["code"] == expected, doc["diagnostics"]
+        secret_file.unlink()
 
         config.write_text("spring.datasource.jndi-name=sample-secret-value\n")
         doc = analyze(project, [])
@@ -162,7 +195,7 @@ def check_config():
 
 def check_gradle(gradle):
     command = [gradle, "--no-daemon", "--console=plain", "-p", FIXTURE]
-    args = ["--configuration-cache", "--rerun-tasks", "-PmagicInfra.profiles=test,dev",
+    args = ["--configuration-cache", "-PmagicInfra.profiles=test,dev",
             ":java-app:springEvidence", ":kotlin-app:springEvidence"]
     paths = {language: FIXTURE / f"{language}-app/build/magic-infra/evidence.json"
              for language in ("java", "kotlin")}
@@ -197,6 +230,14 @@ def check_gradle(gradle):
         assert findings["f-postgresql-driver"]["implementation"] == "postgresql"
         assert findings["f-postgresql-driver"]["source"]["reference"] == "org.postgresql:postgresql:42.7.11"
         assert all(item["certainty"] == "observed" for item in findings.values())
+    symlink = FIXTURE / "java-app/src/main/resources/temporary-cache-probe.txt"
+    symlink.symlink_to("application.properties")
+    try:
+        third = success(invoke(command + args, timeout=300)).decode()
+        assert "Reusing configuration cache." in third, third
+        assert read_json(paths["java"])["diagnostics"][-1]["code"] == "MI_SPRING_CONFIG_LINK"
+    finally:
+        symlink.unlink()
     unresolved = invoke(command + ["--offline", "-Pfixture.unresolved", ":java-app:springEvidence"], timeout=120)
     assert unresolved.returncode != 0 and b"MI_SPRING_RUNTIME_UNRESOLVED" in unresolved.stdout + unresolved.stderr
     print("Java/Kotlin Gradle fixtures passed resolved metadata, cache reuse, repeatability and offline failure checks.")

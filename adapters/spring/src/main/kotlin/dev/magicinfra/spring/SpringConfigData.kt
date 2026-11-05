@@ -9,6 +9,7 @@ import org.springframework.boot.origin.PropertySourceOrigin
 import org.springframework.boot.origin.TextResourceOrigin
 import org.springframework.core.env.MapPropertySource
 import org.springframework.core.env.StandardEnvironment
+import org.springframework.util.PropertyPlaceholderHelper
 import java.io.IOException
 import java.io.UncheckedIOException
 import java.nio.file.Path
@@ -16,6 +17,9 @@ import java.nio.file.Path
 private const val DATASOURCE_URL = "spring.datasource.url"
 private const val DATASOURCE_DRIVER = "spring.datasource.driver-class-name"
 private const val DATASOURCE_JNDI = "spring.datasource.jndi-name"
+private const val PLACEHOLDER_START = "\${"
+private val placeholderStart = Regex.fromLiteral(PLACEHOLDER_START)
+private val placeholders = PropertyPlaceholderHelper(PLACEHOLDER_START, "}", ":", '\\', false)
 
 internal data class ConfigObservations(
     val profiles: List<String>,
@@ -38,8 +42,8 @@ internal fun inspectConfig(request: AnalysisRequest, project: Path): ConfigObser
         if (profiles.isNotEmpty()) inputs["spring.profiles.active"] = profiles.joinToString(",")
         environment.propertySources.addFirst(MapPropertySource("magic-infra analysis inputs", inputs))
         ConfigDataEnvironmentPostProcessor.applyTo(environment, snapshot, null)
-        val activeProfiles = environment.activeProfiles.toList()
-        if (!validProfiles(activeProfiles)) {
+        val effectiveProfiles = environment.activeProfiles.ifEmpty { environment.defaultProfiles }.toList()
+        if (!validProfiles(effectiveProfiles)) {
             throw ConfigUnavailable("MI_SPRING_CONFIG_PROFILES_UNKNOWN", "Use up to 32 supported local profile names.")
         }
 
@@ -47,15 +51,17 @@ internal fun inspectConfig(request: AnalysisRequest, project: Path): ConfigObser
         val diagnostics = mutableListOf<Map<String, Any>>()
         diagnostics += diagnostic("MI_SPRING_CONFIG_CUSTOM_SOURCES_UNKNOWN", "info",
             "Application-defined property sources and runtime environment overrides were not evaluated.")
+        val sources = ConfigurationPropertySources.get(environment)
         for (key in listOf(DATASOURCE_URL, DATASOURCE_DRIVER, DATASOURCE_JNDI)) {
             val name = ConfigurationPropertyName.of(key)
-            val property = ConfigurationPropertySources.get(environment).firstNotNullOfOrNull { it.getConfigurationProperty(name) }
+            val property = sources.firstNotNullOfOrNull { it.getConfigurationProperty(name) }
                 ?: continue
             val source = configSource(key, property.origin)
-            val value = try {
-                environment.resolveRequiredPlaceholders(property.value.toString()).takeUnless { it.contains("\${") }
-            } catch (_: IllegalArgumentException) {
-                null
+            val value = resolveLocalPlaceholders(property.value.toString()) { placeholder ->
+                val canonical = ConfigurationPropertyName.ofIfValid(placeholder)
+                val relaxed = canonical?.let { sources.firstNotNullOfOrNull { source -> source.getConfigurationProperty(it) } }
+                relaxed?.value?.toString()
+                    ?: environment.propertySources.firstNotNullOfOrNull { it.getProperty(placeholder)?.toString() }
             }
             val implementation = when (key) {
                 DATASOURCE_URL -> when {
@@ -74,7 +80,7 @@ internal fun inspectConfig(request: AnalysisRequest, project: Path): ConfigObser
             }
             when {
                 value == null -> diagnostics += diagnostic("MI_SPRING_CONFIG_PLACEHOLDER_UNKNOWN", "warning",
-                    "A datasource property has an unresolved placeholder in the local snapshot.", source)
+                    "A datasource property could not be resolved within the local placeholder scope and limits.", source)
                 key == DATASOURCE_JNDI -> diagnostics += diagnostic("MI_SPRING_CONFIG_CUSTOM_DATASOURCE_UNKNOWN", "warning",
                     "A JNDI datasource requires runtime configuration.", source)
                 implementation == null -> diagnostics += diagnostic("MI_SPRING_CONFIG_DATASOURCE_UNKNOWN", "warning",
@@ -92,7 +98,7 @@ internal fun inspectConfig(request: AnalysisRequest, project: Path): ConfigObser
                 "details" to mapOf("key" to key),
             ).apply { implementation?.let { put("implementation", it) } }
         }
-        return ConfigObservations(activeProfiles, true, findings, diagnostics)
+        return ConfigObservations(effectiveProfiles, true, findings, diagnostics)
     } catch (failure: ConfigUnavailable) {
         return unavailable(profiles, failure)
     } catch (_: IOException) {
@@ -110,8 +116,27 @@ internal fun inspectConfig(request: AnalysisRequest, project: Path): ConfigObser
 private fun unreadableConfig(profiles: List<String>) = unavailable(profiles,
     ConfigUnavailable("MI_SPRING_CONFIG_READ", "Local configuration files could not be read."))
 
+private fun resolveLocalPlaceholders(value: String, lookup: (String) -> String?): String? {
+    var remainingCharacters = 16_384
+    var remainingLookups = 64
+    fun checked(text: String): String {
+        remainingCharacters -= text.length
+        require(text.length <= 4096 && remainingCharacters >= 0 &&
+            placeholderStart.findAll(text).take(17).count() <= 16)
+        return text
+    }
+    return try {
+        placeholders.replacePlaceholders(checked(value)) { name ->
+            require(--remainingLookups >= 0 && name.length <= 240)
+            lookup(name)?.let(::checked)
+        }.takeUnless { it.contains(PLACEHOLDER_START) }
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+}
+
 private fun unavailable(profiles: List<String>, failure: ConfigUnavailable): ConfigObservations {
-    val source = failure.origin?.let { configSource("spring.config.import", it) }
+    val source = failure.reference?.let { configSource(it, failure.origin) }
     return ConfigObservations(profiles, diagnostics = listOf(diagnostic(failure.code, "warning", failure.message.orEmpty(), source)))
 }
 
