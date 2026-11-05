@@ -12,7 +12,7 @@
   <link rel="canonical" href="https://christian-draeger.github.io/magic-infra/" />
   <title>magic-infra — Your app knows what it needs. Your infra should too.</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=star" />
-  <link rel="stylesheet" href="assets/styles.css?v=open-adapters" />
+  <link rel="stylesheet" href="assets/styles.css?v=compiler-ir" />
   <script defer src="assets/app.js"></script>
 </head>
 <body id="top">
@@ -109,18 +109,56 @@ spring:
     </section>
 
     <section class="section architecture container" id="architecture" aria-labelledby="architecture-title">
-      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>OPEN FRAMEWORK ADAPTERS</span></p><h2 id="architecture-title">Many frameworks.<br/><em>One compiler.</em></h2><p>Each adapter reads its framework and reports what it finds in a shared format. The compiler combines those findings with your choices in <code>infra.yaml</code> and generates a plan for Compose or Kubernetes. A new framework can plug in without changing the compiler or deployment backends.</p></div>
-      <div class="architecture-visual reveal" aria-label="Architecture diagram: framework adapters produce evidence, the compiler resolves an application model and a deployment plan, and the backends produce Docker Compose or Kubernetes artifacts">
+      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>OPEN FRAMEWORK ADAPTERS</span></p><h2 id="architecture-title">Many frameworks.<br/><em>One compiler.</em></h2><p>Framework adapters report evidence. The core resolves it into a portable application model, the compiler’s intermediate representation (IR). From there, the selected backend helps plan and generate files for Compose or Kubernetes.</p></div>
+      <div class="architecture-visual reveal" aria-label="Architecture diagram: adapters send Evidence to the core. The core resolves an Application IR and plans with the selected backend. The renderer turns the plan into Compose or Kubernetes files.">
         <div class="architecture-topline"><span>ARCHITECTURE / SYSTEM VIEW</span><span><span class="live-indicator"></span> DESIGNED FOR EXTENSIBILITY</span></div>
         <div class="arch-flow">
           <div class="arch-box arch-input"><div class="arch-ico">&lt;/&gt;</div><div class="arch-type">FRAMEWORK ADAPTERS</div><h3>Understand<br/>the application.</h3><div class="arch-chips"><span>Spring Boot <small>first planned</small></span><span>Next.js <small>planned pilot</small></span><span>+ community adapters</span></div></div>
           <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Evidence</small></div>
-          <div class="arch-box arch-core"><div class="core-glimmer" aria-hidden="true"></div><div class="arch-ico core-ico">✳</div><div class="arch-type">MAGIC-INFRA CORE</div><h3>Resolve.<br/>Validate. Plan.</h3><p>Evidence + explicit intent → application model → target plan.</p><div class="core-label">PORTABLE BY DESIGN</div></div>
-          <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Plan</small></div>
+          <div class="arch-box arch-core"><div class="core-glimmer" aria-hidden="true"></div><div class="arch-ico core-ico">✳</div><div class="arch-type">MAGIC-INFRA CORE</div><h3>Resolve.<br/>Validate. Plan.</h3><p>Evidence + explicit intent → Application IR → Deployment Plan.</p><div class="core-label">PORTABLE BY DESIGN</div></div>
+          <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Deployment Plan</small></div>
           <div class="arch-box arch-output"><div class="arch-ico">↳</div><div class="arch-type">INFRA BACKENDS</div><h3>Generate<br/>what you own.</h3><div class="arch-chips"><span>Docker Compose</span><span>Kubernetes / K3s</span><span>+ future backends</span></div></div>
         </div>
         <div class="arch-bottomline"><span>01 / Observe, don't guess</span><span>02 / No hidden infrastructure</span><span>03 / Standard artifacts</span></div>
       </div>
+      <details class="compiler-detail reveal" id="compiler-detail">
+        <summary>
+          <span><strong>Inside the compiler</strong><small>Follow one PostgreSQL dependency through the planned layers.</small></span>
+          <span class="tool-expand" aria-hidden="true"></span>
+        </summary>
+        <div class="compiler-detail-body">
+          <ol class="compiler-stages">
+            <li class="compiler-stage">
+              <p class="compiler-stage-label">01 / ADAPTER → CORE</p>
+              <h3>Evidence: what the app reveals</h3>
+              <p>The framework adapter hands off a versioned JSON document through a local process or file. It includes findings, their source, and anything the adapter could not determine. The core validates the contract before using it.</p>
+              <div class="compiler-example"><span>Observed in the build</span><code>api: PostgreSQL driver detected</code><span>Still unknown: who manages the database?</span></div>
+            </li>
+            <li class="compiler-stage">
+              <p class="compiler-stage-label">02 / RESOLVER &amp; POLICY</p>
+              <h3>Application IR: what you intend</h3>
+              <p>The resolver combines evidence with <code>infra.yaml</code>, checks for conflicts, and builds a graph of services, resources, and bindings. Each decision points back to its source. IDs and ownership stay the same across targets.</p>
+              <div class="compiler-example"><span>One binding in the IR</span><code>api → primary-db</code><span>PostgreSQL · managed · retain on removal</span></div>
+            </li>
+            <li class="compiler-stage">
+              <p class="compiler-stage-label">03 / CORE ↔ TARGET BACKEND</p>
+              <h3>Deployment Plan: what the target can do</h3>
+              <p>The selected backend receives the validated IR and target settings. Its capability checks inform a target-specific plan: expected resources, prerequisites, and planned files. An unsupported requirement blocks planning instead of being silently dropped.</p>
+              <div class="compiler-example"><span>Kubernetes plan prerequisite</span><code>CloudNativePG operator required</code><span>The plan previews output; it is not a live state diff.</span></div>
+            </li>
+            <li class="compiler-stage">
+              <p class="compiler-stage-label">04 / RENDERER → YOUR WORKFLOW</p>
+              <h3>Artifacts: what you deploy</h3>
+              <p>The renderer uses the plan to write standard files. The same inputs produce the same output, with references to secrets instead of secret values. Building an image and applying changes are separate steps you control.</p>
+              <dl class="compiler-outputs">
+                <div><dt>Compose</dt><dd>PostgreSQL service + named volume</dd></div>
+                <div><dt>Kubernetes</dt><dd>CloudNativePG Cluster + operator-managed storage</dd></div>
+              </dl>
+            </li>
+          </ol>
+          <a class="compiler-doc-link" href="https://github.com/christian-draeger/magic-infra/blob/main/docs/ARCHITECTURE.md">Read the draft architecture and contracts <span aria-hidden="true">↗</span></a>
+        </div>
+      </details>
       <div class="arch-notes"><div class="arch-note reveal"><span class="note-symbol">◇</span><h3>Evidence, not assumptions.</h3><p>The adapter reports what it saw—and what it couldn't know. Dependencies aren't permission to provision.</p></div><div class="arch-note reveal" style="--delay:.08s"><span class="note-symbol">◎</span><h3>Intent, not YAML soup.</h3><p>A shared application model describes resources, bindings, ownership and lifecycles—not Kubernetes internals.</p></div><div class="arch-note reveal" style="--delay:.16s"><span class="note-symbol">↗</span><h3>Portable, not identical.</h3><p>Each backend checks its capabilities. A single VPS doesn't suddenly become highly available.</p></div></div>
     </section>
 

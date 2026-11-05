@@ -76,7 +76,7 @@
   margin-bottom:12px;
 }
 .tool-detail{border-top:1px solid var(--line)}
-.tool-detail summary{
+:is(.tool-detail,.compiler-detail) > summary{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -85,11 +85,11 @@
   cursor:pointer;
   list-style:none;
 }
-.tool-detail summary::-webkit-details-marker{display:none}
-.tool-detail summary:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:2px}
-.tool-detail summary strong,.tool-detail summary small{display:block}
-.tool-detail summary strong{font-size:15px;line-height:1.2}
-.tool-detail summary small{color:#a9bbb0;font-size:11px;line-height:1.5;margin-top:4px}
+:is(.tool-detail,.compiler-detail) > summary::-webkit-details-marker{display:none}
+:is(.tool-detail,.compiler-detail) > summary:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:2px}
+:is(.tool-detail,.compiler-detail) > summary strong,:is(.tool-detail,.compiler-detail) > summary small{display:block}
+:is(.tool-detail,.compiler-detail) > summary strong{font-size:15px;line-height:1.2}
+:is(.tool-detail,.compiler-detail) > summary small{color:#a9bbb0;font-size:11px;line-height:1.5;margin-top:4px}
 .tool-expand{
   display:grid;
   place-items:center;
@@ -102,8 +102,54 @@
 }
 .tool-expand::before,.tool-expand::after{content:"";grid-area:1/1;background:currentColor;width:10px;height:1px}
 .tool-expand::after{rotate:90deg;transition:rotate .2s}
-.tool-detail[open] .tool-expand::after{rotate:0deg}
-.tool-detail[open] summary strong,.tool-detail summary:hover strong{color:var(--lime)}
+:is(.tool-detail,.compiler-detail)[open] .tool-expand::after{rotate:0deg}
+:is(.tool-detail,.compiler-detail)[open] summary strong,:is(.tool-detail,.compiler-detail) > summary:hover strong{color:var(--lime)}
+.compiler-detail{
+  margin-top:16px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:linear-gradient(135deg,#17251f,#0e171c 65%);
+}
+.compiler-detail > summary{padding:18px clamp(14px,3vw,28px)}
+.compiler-detail > summary strong{font-size:17px}
+.compiler-detail > summary small{font-size:12px}
+.compiler-detail-body{padding:0 clamp(14px,3vw,28px) 22px}
+.compiler-stages{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  padding:0;
+  margin:0 0 16px;
+  list-style:none;
+}
+.compiler-stage{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  padding:clamp(13px,2vw,20px);
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#0d151b;
+}
+.compiler-stage-label{margin:0 0 8px;color:var(--lime);font:700 10px/1.5 var(--mono);letter-spacing:.05em}
+.compiler-stage h3{margin:0 0 8px;font-size:clamp(18px,2vw,24px);letter-spacing:-.035em}
+.compiler-stage > p:not(.compiler-stage-label){margin:0 0 14px;color:#b0beb5;font-size:13px;line-height:1.65}
+.compiler-example,.compiler-outputs{
+  margin:auto 0 0;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:5px;
+  background:#111f22;
+  color:#a9bbb0;
+  font-size:11px;
+}
+.compiler-example > *{display:block;line-height:1.65}
+.compiler-example code{color:var(--lime);font:650 12px/1.65 var(--mono);margin:3px 0;overflow-wrap:anywhere}
+.compiler-outputs div + div{margin-top:6px}
+.compiler-outputs dt{color:var(--lime);font:650 11px/1.6 var(--mono)}
+.compiler-outputs dd{margin:0;line-height:1.5}
+.compiler-doc-link{color:var(--lime);font-size:12px;font-weight:750;text-decoration:underline;text-underline-offset:4px}
+@media(max-width:680px){.compiler-stages{grid-template-columns:minmax(0,1fr)}}
 .tool-detail-body{padding:0 2px 16px;color:#b0beb5;font-size:13px}
 .tool-detail-body p{margin-bottom:10px}
 .tool-detail-body strong{color:var(--ink)}

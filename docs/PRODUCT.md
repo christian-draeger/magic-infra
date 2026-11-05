@@ -40,6 +40,9 @@ some Spring behavior only becomes clear at runtime. Favor traceable findings
 and explicit questions over guesses. Start with a small, well-tested resource
 catalog rather than building a general IaC engine.
 
+For the handoff between adapters, the core and backends, see the
+[compiler architecture](ARCHITECTURE.md).
+
 ## Where other tools fit
 
 This is a comparison of starting points and responsibilities, not a feature
