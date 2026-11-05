@@ -149,6 +149,35 @@ def check_relational_rules():
     print("Relational suggestions, declared external intent, provenance and conflict checks passed.")
 
 
+def check_infra_declarations():
+    directory = ROOT / "examples/infra"
+    validator = [READER, "validate-infra"]
+    for name in ("managed", "external"):
+        assert success(invoke(validator + [directory / f"{name}.yaml"])) == b""
+    rejected(invoke(validator + [directory / "invalid-missing-management.yaml"]), 2,
+             "MI_INFRA_SCHEMA", "/resources/primary-db", "management")
+
+    external = (directory / "external.yaml").read_text()
+    for source, code, field in [
+        (external.replace("SHOP_DB_URL", "jdbc:postgresql://sample-secret-value.invalid/db"),
+         "MI_INFRA_SCHEMA", "/resources/primary-db/endpointRef"),
+        (external.replace("    secretRef:", "    password: sample-secret-value\n    secretRef:"),
+         "MI_INFRA_SCHEMA", "/resources/primary-db/password"),
+        (external.replace("resourceId: primary-db", "resourceId: missing"),
+         "MI_INFRA_REFERENCE", "/bindings/0/resourceId"),
+        (external.replace("    port: 8080", "    port: 8080\n    port: 9000"),
+         "MI_INFRA_YAML", "line"),
+        (external.replace("    port: 8080", "    port: 1970-01-01T00:00:01Z"),
+         "MI_INFRA_YAML", "mapping"),
+        (external.replace("  api:", "  api: &api"),
+         "MI_INFRA_YAML_FEATURE", "anchors"),
+    ]:
+        rejected(invoke(validator + ["-"], source.encode()), 2, code, field)
+    historical = invoke(validator + [ROOT / "examples/m0/infra.yaml"])
+    rejected(historical, 3, "MI_INFRA_VERSION", "infra/v1alpha2")
+    print("Managed/external infra declarations, parser safety and reference checks passed.")
+
+
 def check_config():
     request = read_json(FIXTURE / "request.json")
 
@@ -381,6 +410,7 @@ if __name__ == "__main__":
     check_protocol()
     check_config()
     check_relational_rules()
+    check_infra_declarations()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)

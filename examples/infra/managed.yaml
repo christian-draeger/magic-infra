@@ -1,0 +1,17 @@
+schemaVersion: infra/v1alpha2
+applicationId: shop
+services:
+  api:
+    imageRef: example.invalid/shop/api:fixture
+    port: 8080
+resources:
+  primary-db:
+    kind: postgresql
+    management: managed
+    deletionPolicy: retain
+    database: shop
+    secretRef: shop-db-credentials
+    storageSize: 1Gi
+bindings:
+  - serviceId: api
+    resourceId: primary-db
