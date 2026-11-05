@@ -2,14 +2,11 @@ package dev.magicinfra.compiler.evidence
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.core.util.DefaultIndenter
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.dialect.Dialects
 
 internal object ApplicationModelResolver {
     private val mapper = JsonMapper.builder().build()
-    private val writer = mapper.writer(DefaultPrettyPrinter().withObjectIndenter(DefaultIndenter("  ", "\n")))
     private val schema by lazy {
         val registry = SchemaRegistry.withDialect(Dialects.getDraft202012())
         checkNotNull(ApplicationModelResolver::class.java.getResourceAsStream("/application.v1alpha1.schema.json")).use {
@@ -17,7 +14,7 @@ internal object ApplicationModelResolver {
         }
     }
 
-    fun resolve(evidence: JsonNode, declaration: JsonNode): String {
+    fun resolve(evidence: JsonNode, declaration: JsonNode): JsonNode {
         val id = declaration.path("applicationId").asText()
         if (id != evidence.path("application").path("id").asText()) {
             throw EvidenceRejected("MI_APPLICATION_ID_MISMATCH", "Set /applicationId to the analyzed application ID.")
@@ -99,7 +96,7 @@ internal object ApplicationModelResolver {
         if (schema.validate(document).isNotEmpty()) {
             throw EvidenceRejected("MI_APPLICATION_SCHEMA", "The resolver produced an invalid Application Model.", 1)
         }
-        return writer.writeValueAsString(document) + "\n"
+        return document
     }
 
     private fun normalizeResource(id: String, resource: JsonNode): Map<String, Any> {

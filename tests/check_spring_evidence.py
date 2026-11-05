@@ -268,6 +268,44 @@ def check_application_model():
     print("Application Model normalization, ownership, conflicts and canonical output checks passed.")
 
 
+def check_plan_preview():
+    base = ROOT / "examples/m0"
+    evidence_path = base / "evidence.json"
+    evidence = read_json(evidence_path)
+    directory = ROOT / "examples/infra"
+    initialized = success(invoke([READER, "init", "shop", "example.invalid/shop:fixture", "8080"]))
+    assert success(invoke([READER, "validate-infra", "-"], initialized)) == b""
+    assert yaml.safe_load(initialized)["resources"] == {} and yaml.safe_load(initialized)["bindings"] == []
+    assert json.loads(success(invoke([READER, "analyze", evidence_path]))) == evidence
+    with tempfile.TemporaryDirectory() as directory_name:
+        scratch = Path(directory_name)
+        for management in ("managed", "external"):
+            declaration = directory / f"{management}.yaml"
+            command = [READER, "plan", evidence_path, declaration]
+            output = success(invoke(command, cwd=scratch))
+            assert output == success(invoke(command + ["dev"], cwd=scratch))
+            plan = json.loads(output)
+            validate_schema(plan, "plan")
+            assert plan["mode"] == "compile-preview"
+            assert plan["target"] == {"backend": "docker-compose", "environment": "dev"}
+            assert plan["artifacts"] == [{"path": "compose.yaml", "kind": "compose-manifest"}]
+            assert plan["diagnostics"] == evidence["diagnostics"]
+            actions = [operation["action"] for operation in plan["operations"]]
+            assert actions == ["create" if management == "managed" else "reference", "bind"]
+            assert not list(scratch.iterdir()), "Preview wrote files to its working directory"
+
+    undecided = yaml.safe_load((directory / "managed.yaml").read_text())
+    undecided["resources"] = {}
+    undecided["bindings"] = []
+    conflict = invoke([READER, "--diagnostics=json", "plan", evidence_path, "-"], yaml.safe_dump(undecided).encode())
+    assert conflict.returncode == 4 and conflict.stdout == b""
+    diagnostic = json.loads(conflict.stderr)
+    assert diagnostic["code"] == "MI_APPLICATION_BINDING_REQUIRED" and diagnostic["severity"] == "error"
+    invalid_environment = invoke([READER, "--diagnostics=json", "plan", evidence_path, directory / "managed.yaml", "bad/path"])
+    assert invalid_environment.returncode == 2 and json.loads(invalid_environment.stderr)["code"] == "MI_PLAN_ENVIRONMENT"
+    print("CLI initialization, Evidence inspection and side-effect-free plan preview checks passed.")
+
+
 def check_config():
     request = read_json(FIXTURE / "request.json")
 
@@ -509,6 +547,7 @@ if __name__ == "__main__":
     check_relational_rules()
     check_infra_declarations()
     check_application_model()
+    check_plan_preview()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)
