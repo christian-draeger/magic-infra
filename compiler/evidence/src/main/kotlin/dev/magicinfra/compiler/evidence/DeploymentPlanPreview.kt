@@ -24,6 +24,14 @@ internal object DeploymentPlanPreview {
             throw EvidenceRejected("MI_PLAN_EVIDENCE_ERROR",
                 "Inspect and resolve adapter errors with evidence-check analyze before planning.", 4)
         }
+        val ports = mutableSetOf<Int>()
+        for (service in model.path("services")) {
+            val port = service.path("runtime").path("port").asInt()
+            if (!ports.add(port)) {
+                throw EvidenceRejected("MI_COMPOSE_PORT_CONFLICT",
+                    "Set distinct ports for services on the Compose host. Port $port is already used in this model.", 4)
+            }
+        }
         val resources = model.path("resources")
         val managed = resources.any { it.path("management").asText() == "managed" }
         val operations = resources.map { resource ->
@@ -39,7 +47,7 @@ internal object DeploymentPlanPreview {
             operation("bind", serviceId, "low", "Bind service $serviceId to PostgreSQL resource $resourceId.")
         }
         val prerequisites = buildList {
-            add(prerequisite("compose-v2", "Provide a Docker engine with Compose support."))
+            add(prerequisite("compose-v2", "Provide a Docker engine with Compose 2.30 or later."))
             for (service in model.path("services")) {
                 val id = service.path("id").asText()
                 val image = service.path("build").path("imageRef").asText()

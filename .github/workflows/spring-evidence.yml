@@ -57,5 +57,5 @@ jobs:
           python -m pip install -r tests/requirements.txt
           gradle --no-daemon --console=plain :spring-evidence:validatePlugins :spring-evidence:installDist :evidence-check:installDist
           python tests/check_spring_evidence.py
-      - name: Verify the explicit OCI image build and health endpoint
-        run: python tests/check_oci_image.py
+      - name: Verify the OCI image and generated Compose stack
+        run: python tests/check_oci_image.py --with-compose
