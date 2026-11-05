@@ -243,6 +243,70 @@ def check_gradle(gradle):
     print("Java/Kotlin Gradle fixtures passed resolved metadata, cache reuse, repeatability and offline failure checks.")
 
 
+def check_bytecode(gradle):
+    command = [gradle, "--no-daemon", "--console=plain", "-p", FIXTURE, "--configuration-cache",
+               "-PmagicInfra.bytecode=true", ":java-app:springEvidence", ":kotlin-app:springEvidence"]
+    first = success(invoke(command, timeout=300))
+    paths = {language: FIXTURE / f"{language}-app/build/magic-infra/evidence.json"
+             for language in ("java", "kotlin")}
+    outputs = {language: path.read_bytes() for language, path in paths.items()}
+    second = success(invoke(command, timeout=300))
+    assert b"Reusing configuration cache." in second, second
+    assert b"bootRun" not in first + second
+    for language, path in paths.items():
+        output = path.read_bytes()
+        assert output == outputs[language] and b"sample-secret-value" not in output
+        doc = json.loads(output)
+        validate_schema(doc, "evidence")
+        success(invoke([READER, path]))
+        class_findings = {finding["kind"]: finding for finding in doc["findings"] if finding["source"]["kind"] == "bytecode"}
+        assert class_findings.keys() == {"annotation", "bean"}, class_findings
+        annotation, bean = class_findings["annotation"], class_findings["bean"]
+        assert annotation["details"]["annotation"] == "jakarta.persistence.Entity"
+        assert annotation["certainty"] == "observed" and "implementation" not in annotation
+        assert bean["kind"] == "bean" and bean["certainty"] == "uncertain" and "implementation" not in bean
+        assert {item["serviceId"] for item in (annotation, bean)} == {f"{language}-app"}
+        annotation_name = "JavaDatabase$JavaRecord" if language == "java" else "KotlinRecord"
+        bean_class = "JavaDatabase" if language == "java" else "KotlinDatabase"
+        return_type = "Ljavax/sql/DataSource;" if language == "java" else "Ljava/lang/Object;"
+        assert annotation["source"]["reference"] == f"example.{annotation_name}"
+        assert annotation["source"]["path"].endswith(f"/example/{annotation_name}.class")
+        assert bean["source"]["reference"] == f"example.{bean_class}#customPool(){return_type}"
+        assert bean["source"]["path"].endswith(f"/example/{bean_class}.class")
+        diagnostics = {item["code"]: item for item in doc["diagnostics"]}
+        assert diagnostics["MI_SPRING_BYTECODE_DATASOURCE_UNKNOWN"]["source"] == bean["source"]
+        assert diagnostics["MI_SPRING_BYTECODE_CONDITIONAL_BEAN_UNKNOWN"]["source"] == bean["source"]
+        if language == "java":
+            assert diagnostics["MI_SPRING_BYTECODE_PROPERTY_SOURCE_UNKNOWN"]["source"]["reference"] == "example.JavaDatabase"
+    print("Java/Kotlin JVM annotation, conditional bean and provenance checks passed.")
+
+
+def check_bytecode_limits():
+    library = ADAPTER.parent.parent / "lib"
+    probe = ["java", "-cp", os.pathsep.join(str(path) for path in sorted(library.glob("*.jar"))),
+             ROOT / "tests/fixtures/SpringBytecodeProbe.java"]
+    with tempfile.TemporaryDirectory() as directory:
+        os.mkfifo(Path(directory) / "d-pipe.class")
+        output = success(invoke(probe + [directory, "generate"], timeout=60))
+        success(invoke([READER, "-"], output))
+        doc = json.loads(output)
+        unknown = {entry["source"]["path"] for entry in doc["diagnostics"]
+                   if entry["code"] == "MI_SPRING_BYTECODE_CLASS_UNKNOWN"}
+        assert unknown == {"a-invalid-header.class", "b-duplicate.class", "c-deep.class", "d-pipe.class"}, unknown
+        assert doc["findings"] and all(finding["source"]["path"] == "e-burst.class" for finding in doc["findings"])
+        assert doc["diagnostics"][-1]["code"] == "MI_SPRING_BYTECODE_LIMIT"
+        assert len(doc["findings"]) + len(doc["diagnostics"]) <= 514
+    with tempfile.TemporaryDirectory() as directory:
+        for index in range(33):
+            with (Path(directory) / f"{index:02}.class").open("wb") as file:
+                file.truncate(1024 * 1024)
+        doc = json.loads(success(invoke(probe + [directory], timeout=60)))
+        assert len([entry for entry in doc["diagnostics"] if entry["code"] == "MI_SPRING_BYTECODE_CLASS_UNKNOWN"]) == 32
+        assert doc["diagnostics"][-1]["code"] == "MI_SPRING_BYTECODE_LIMIT"
+        assert "total read limit" in doc["diagnostics"][-1]["message"]
+    print("Malformed bytecode, input limits and compiler-compatible output checks passed.")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gradle", default="gradle")
@@ -252,3 +316,5 @@ if __name__ == "__main__":
     check_config()
     if not args.protocol_only:
         check_gradle(args.gradle)
+        check_bytecode(args.gradle)
+        check_bytecode_limits()

@@ -35,9 +35,34 @@ Gradle can reuse its configuration cache. The task rechecks its bounded
 local snapshot on every execution so file changes and newly introduced
 symbolic links cannot leave stale Evidence.
 
-The task leaves the application uncompiled and stopped. Running Gradle
+The default task leaves the application uncompiled and stopped. Running Gradle
 still runs the project's normal build logic with the invoking user's
-permissions. Bytecode and runtime bean metadata are separate analysis work.
+permissions.
+
+## Opt-in JVM bytecode analysis
+
+Add `-PmagicInfra.bytecode=true` to a Gradle invocation to compile the main
+source set and inspect its Java and Kotlin class files. The app stays
+stopped. The standalone dependency and ConfigData request is unchanged.
+
+The scan records directly declared JPA `@Entity` and
+`@EnableJpaRepositories` annotations as relational evidence. An annotation
+alone carries no database vendor. A direct `@Bean` method is a possible
+datasource when it has a supported datasource return descriptor or the
+method or bean name is `dataSource`. The adapter reports the declaring
+class, JVM method signature and module-relative class file. Class- and
+method-level `@Conditional`, Boot `@ConditionalOn…` and `@Profile`
+annotations add uncertainty diagnostics. A direct `@PropertySource`
+declaration is reported without loading the referenced source.
+
+Analysis reads class metadata only. It leaves application classes
+unloaded, skips synthetic and bridge methods, and cannot interpret method
+bodies, custom meta-annotations, reflective registrations, or arbitrary
+datasource subtypes. It reports unreadable classes and caps inspection at
+4,096 files, 1 MiB per class and 32 MiB total. It emits at most 512 bytecode
+findings and diagnostics plus a truncation warning, and bounds retained
+source references so the compiler can read the result. See the
+[bytecode ADR](adr/0005-spring-bytecode.md).
 
 ## Local Spring ConfigData
 
@@ -123,6 +148,11 @@ diagnostic source shape and the `info`, `warning`, and `error` severities.
 | `MI_SPRING_CONFIG_LINK`, `MI_SPRING_CONFIG_LIMIT`, `MI_SPRING_CONFIG_YAML_ALIAS`, `MI_SPRING_CONFIG_PROFILES_UNKNOWN` | warning | The snapshot is outside the supported path, size, document or profile limits. |
 | `MI_SPRING_CONFIG_CUSTOM_SOURCES_UNKNOWN` | info | Application-defined property sources and environment overrides were outside the snapshot. |
 | `MI_SPRING_CONFIG_DATASOURCE_URL` | info | A recognized local datasource URL was observed. |
+| `MI_SPRING_BYTECODE_DATASOURCE_UNKNOWN` | warning | A declared datasource bean needs runtime binding information. |
+| `MI_SPRING_BYTECODE_CONDITIONAL_BEAN_UNKNOWN` | warning | A condition or profile can affect a datasource bean. |
+| `MI_SPRING_BYTECODE_PROPERTY_SOURCE_UNKNOWN` | warning | A class declares an additional property source. |
+| `MI_SPRING_BYTECODE_CLASS_UNKNOWN`, `MI_SPRING_BYTECODE_PATH_UNKNOWN`, `MI_SPRING_BYTECODE_LIMIT` | warning | A class was unreadable or outside the snapshot limits. |
+| `MI_SPRING_BYTECODE_OPTION` | error | The Gradle bytecode option is neither `true` nor `false`. |
 
 On failure, stdout is empty and the adapter writes a JSON diagnostic with
 `code`, `severity` and `message` to stderr. The exit codes are:

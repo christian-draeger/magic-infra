@@ -149,7 +149,7 @@ private fun configSource(key: String, origin: Origin?): Map<String, Any> {
     return source
 }
 
-private fun diagnostic(code: String, severity: String, message: String, source: Map<String, Any>? = null): Map<String, Any> =
+internal fun diagnostic(code: String, severity: String, message: String, source: Map<String, Any>? = null): Map<String, Any> =
     linkedMapOf<String, Any>("code" to code, "severity" to severity, "message" to message).apply {
         source?.let { put("source", it) }
     }

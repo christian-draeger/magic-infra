@@ -4,6 +4,10 @@ plugins {
     id("dev.magicinfra.spring-evidence")
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 dependencies {
     implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
     implementation(project(":db-runtime"))

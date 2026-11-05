@@ -1,6 +1,7 @@
 package dev.magicinfra.spring
 
 import com.google.gson.GsonBuilder
+import java.io.File
 import java.nio.file.Path
 
 internal const val REQUEST_VERSION = "spring-adapter-request/v1alpha1"
@@ -58,9 +59,10 @@ private val rules = mapOf(
 internal fun dependencyOfInterest(group: String, name: String): Boolean =
     "$group:$name" in rules || "$group:$name" == "org.springframework.boot:spring-boot"
 
-internal fun evidence(request: AnalysisRequest, project: Path): String {
+internal fun evidence(request: AnalysisRequest, project: Path, classFiles: Set<File>? = null): String {
     validateContext(request)
     val configuration = inspectConfig(request, project)
+    val bytecode = classFiles?.let { inspectBytecode(request.applicationId, project, it) }
     val coordinates = request.dependencies.distinct().sorted()
     val bootVersion = coordinates.singleOrNull { it.substringBeforeLast(':') == "org.springframework.boot:spring-boot" }
         ?.substringAfterLast(':')
@@ -96,7 +98,7 @@ internal fun evidence(request: AnalysisRequest, project: Path): String {
     }
     return json.toJson(linkedMapOf(
         "schemaVersion" to "evidence/v1alpha1",
-        "adapter" to mapOf("id" to "spring-boot", "version" to "0.1.0-alpha.2", "rulesVersion" to "2"),
+        "adapter" to mapOf("id" to "spring-boot", "version" to "0.1.0-alpha.3", "rulesVersion" to "3"),
         "application" to application,
         "analysis" to mapOf(
             "profiles" to configuration.profiles,
@@ -104,11 +106,13 @@ internal fun evidence(request: AnalysisRequest, project: Path): String {
             "limitations" to listOf(
                 "Only selected components on the resolved runtime classpath are inspected.",
                 "Only project-local properties and YAML in the requested roots are supported.",
-                "Application classes, dynamic property sources, and resource ownership are outside this snapshot.",
+                "Dynamic property sources and resource ownership are outside this snapshot.",
+                if (bytecode == null) "Application classes were not inspected."
+                else "Class and method metadata cannot establish which runtime beans are active.",
             ),
         ),
         "services" to listOf(mapOf("id" to request.applicationId, "module" to request.module, "buildSystem" to "gradle")),
-        "findings" to findings + configuration.findings,
-        "diagnostics" to diagnostics + configuration.diagnostics,
+        "findings" to findings + configuration.findings + bytecode?.findings.orEmpty(),
+        "diagnostics" to diagnostics + configuration.diagnostics + bytecode?.diagnostics.orEmpty(),
     )) + "\n"
 }

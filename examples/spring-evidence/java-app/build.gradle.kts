@@ -7,6 +7,7 @@ plugins {
 dependencies {
     implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
     implementation("org.springframework.boot:spring-boot-starter")
+    compileOnly("jakarta.persistence:jakarta.persistence-api")
     runtimeOnly("org.postgresql:postgresql")
 }
 
