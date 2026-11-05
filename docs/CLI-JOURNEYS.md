@@ -16,7 +16,9 @@ In the examples below, `evidence-check` refers to the launcher under
 prerequisites and relative artifact paths, including `compose.yaml`. It
 does not inspect deployed state. An external database yields a reference
 action and a managed database yields a create action in the preview.
-Actual deployment runs separately after the files have been reviewed.
+Binding actions name their destination resource. Prerequisites name image,
+credential and endpoint references. Actual deployment runs separately after
+the files have been reviewed.
 
 Review the plan before generation. The renderer will use deterministic
 file contents, refuse unresolved ownership, and preserve files outside its
@@ -28,8 +30,9 @@ Credential material comes from the deployment environment.
 These commands are noninteractive. Use `-` for at most one input to a
 command. Structured result documents go to stdout. Prefix commands with
 `--diagnostics=json` to get a JSON error on stderr with `code`,
-`severity` and `message`. Plan diagnostics also carry warnings from
-Evidence. A blocked plan emits no partial JSON document.
+`severity` and `message`. Plan diagnostics carry warnings and informational
+findings from Evidence. Adapter errors block planning. A blocked plan emits
+no partial JSON document.
 
 | Exit status | Meaning |
 | --- | --- |
@@ -37,7 +40,7 @@ Evidence. A blocked plan emits no partial JSON document.
 | `1` | Input I/O failure or invalid internally generated output |
 | `2` | Invalid arguments or input |
 | `3` | Unsupported contract version |
-| `4` | Unresolved binding or conflicting Evidence |
+| `4` | Unresolved binding, conflicting Evidence or adapter errors |
 
 The first plan targets one Compose host. Kubernetes planning and
 state-aware comparisons have separate roadmap milestones.

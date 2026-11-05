@@ -303,6 +303,27 @@ def check_plan_preview():
     assert diagnostic["code"] == "MI_APPLICATION_BINDING_REQUIRED" and diagnostic["severity"] == "error"
     invalid_environment = invoke([READER, "--diagnostics=json", "plan", evidence_path, directory / "managed.yaml", "bad/path"])
     assert invalid_environment.returncode == 2 and json.loads(invalid_environment.stderr)["code"] == "MI_PLAN_ENVIRONMENT"
+    error_evidence = {**evidence, "diagnostics": [
+        {"code": "MI_ADAPTER_FAILURE", "severity": "error", "message": "sample-secret-value"}]}
+    blocked = invoke([READER, "plan", "-", directory / "managed.yaml"], json_bytes(error_evidence))
+    rejected(blocked, 4, "MI_PLAN_EVIDENCE_ERROR", "evidence-check analyze")
+
+    two_dbs = yaml.safe_load((directory / "external.yaml").read_text())
+    two_dbs["services"]["worker"] = two_dbs["services"]["api"].copy()
+    two_dbs["resources"]["other-db"] = {**two_dbs["resources"]["primary-db"], "endpointRef": "OTHER_DB_URL"}
+    two_dbs["bindings"].append({"serviceId": "worker", "resourceId": "other-db"})
+    two_services = {**evidence, "services": [*evidence["services"], {"id": "worker", "module": ":worker", "buildSystem": "gradle"}]}
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "evidence.json"
+        path.write_bytes(json_bytes(two_services))
+        command = [READER, "plan", path, "-"]
+        original = success(invoke(command, yaml.safe_dump(two_dbs).encode()))
+        two_dbs["bindings"][0]["resourceId"] = "other-db"
+        two_dbs["bindings"][1]["resourceId"] = "primary-db"
+        switched = success(invoke(command, yaml.safe_dump(two_dbs).encode()))
+    assert original != switched
+    assert b"Bind service api to PostgreSQL resource primary-db." in original
+    assert b"Bind service api to PostgreSQL resource other-db." in switched
     print("CLI initialization, Evidence inspection and side-effect-free plan preview checks passed.")
 
 

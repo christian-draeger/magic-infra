@@ -19,9 +19,13 @@ internal object DeploymentPlanPreview {
         if (!environmentId.matches(environment)) {
             throw EvidenceRejected("MI_PLAN_ENVIRONMENT", "Use a lowercase environment ID such as dev.")
         }
+        val diagnostics = evidence.path("diagnostics")
+        if (diagnostics.any { it.path("severity").asText() == "error" }) {
+            throw EvidenceRejected("MI_PLAN_EVIDENCE_ERROR",
+                "Inspect and resolve adapter errors with evidence-check analyze before planning.", 4)
+        }
         val resources = model.path("resources")
         val managed = resources.any { it.path("management").asText() == "managed" }
-        val external = resources.any { it.path("management").asText() == "external" }
         val operations = resources.map { resource ->
             val id = resource.path("id").asText()
             if (resource.path("management").asText() == "managed") {
@@ -30,13 +34,27 @@ internal object DeploymentPlanPreview {
                 operation("reference", id, "low", "Use the existing PostgreSQL endpoint reference.")
             }
         } + model.path("bindings").map { binding ->
-            operation("bind", binding.path("serviceId").asText(), "low", "Bind the application to PostgreSQL.")
+            val serviceId = binding.path("serviceId").asText()
+            val resourceId = binding.path("resourceId").asText()
+            operation("bind", serviceId, "low", "Bind service $serviceId to PostgreSQL resource $resourceId.")
         }
         val prerequisites = buildList {
             add(prerequisite("compose-v2", "Provide a Docker engine with Compose support."))
-            add(prerequisite("oci-image", "Make the declared prebuilt application images available to the target."))
-            if (!resources.isEmpty) add(prerequisite("credentials", "Provide the referenced database credentials."))
-            if (external) add(prerequisite("endpoint", "Provide the referenced external JDBC endpoint variables."))
+            for (service in model.path("services")) {
+                val id = service.path("id").asText()
+                val image = service.path("build").path("imageRef").asText()
+                add(prerequisite("image-$id", "Make image $image available for service $id."))
+            }
+            for (resource in resources) {
+                val id = resource.path("id").asText()
+                val connection = resource.path("connection")
+                val secretRef = connection.path("secretRef").asText()
+                add(prerequisite("credentials-$id", "Provide credentials reference $secretRef for resource $id."))
+                if (connection.has("endpointRef")) {
+                    val endpointRef = connection.path("endpointRef").asText()
+                    add(prerequisite("endpoint-$id", "Provide external JDBC endpoint reference $endpointRef for resource $id."))
+                }
+            }
         }
         val document = mapper.valueToTree<JsonNode>(linkedMapOf(
             "schemaVersion" to "plan/v1alpha1",
@@ -46,7 +64,7 @@ internal object DeploymentPlanPreview {
             "operations" to operations,
             "prerequisites" to prerequisites,
             "artifacts" to listOf(mapOf("path" to "compose.yaml", "kind" to "compose-manifest")),
-            "diagnostics" to evidence.path("diagnostics"),
+            "diagnostics" to diagnostics,
             "limitations" to buildList {
                 add("Compilation preview. No deployed state was read.")
                 if (managed) add("Compose does not enforce the declared storage size.")
