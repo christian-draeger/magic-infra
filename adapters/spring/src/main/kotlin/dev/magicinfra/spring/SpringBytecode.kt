@@ -8,9 +8,11 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import java.io.File
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 import java.util.HexFormat
 
@@ -18,6 +20,8 @@ private const val BEAN = "Lorg/springframework/context/annotation/Bean;"
 private const val MAX_CLASSES = 4096
 private const val MAX_CLASS_BYTES = 1024 * 1024
 private const val MAX_SCAN_BYTES = 32 * 1024 * 1024
+private const val MAX_RECORDS = 512
+private const val MAX_SOURCE_CHARACTERS = 768
 
 private val relationalAnnotations = setOf(
     "Ljakarta/persistence/Entity;",
@@ -48,7 +52,13 @@ internal fun inspectBytecode(applicationId: String, project: Path, files: Set<Fi
         return BytecodeObservations(findings, diagnostics)
     }
     var remainingBytes = MAX_SCAN_BYTES
-    for (file in files.sortedBy { it.path }) {
+    fun hasRoom(records: Int): Boolean {
+        if (findings.size + diagnostics.size + records <= MAX_RECORDS) return true
+        diagnostics += diagnostic("MI_SPRING_BYTECODE_LIMIT", "warning", "Bytecode analysis reached its Evidence record limit.")
+        return false
+    }
+    scan@ for (file in files.sortedBy { it.path }) {
+        if (!hasRoom(1)) break
         val path = file.toPath().toAbsolutePath().normalize()
         if (!path.startsWith(project) || generateSequence(path) { it.parent }.takeWhile { it != project }.any(Files::isSymbolicLink)) {
             diagnostics += diagnostic("MI_SPRING_BYTECODE_PATH_UNKNOWN", "warning",
@@ -56,37 +66,66 @@ internal fun inspectBytecode(applicationId: String, project: Path, files: Set<Fi
             continue
         }
         val relative = project.relativize(path).joinToString("/")
+        if (relative.length > MAX_SOURCE_CHARACTERS / 2) {
+            diagnostics += sourceTooLong()
+            continue
+        }
         val location = bytecodeSource(relative, relative)
         try {
-            val limit = minOf(remainingBytes, MAX_CLASS_BYTES)
-            val bytes = Files.newInputStream(path, NOFOLLOW_LINKS).use { it.readNBytes(limit + 1) }
-            if (bytes.size > limit) {
+            val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+            if (!attributes.isRegularFile) throw IOException()
+            val size = attributes.size()
+            if (size > MAX_CLASS_BYTES) {
                 diagnostics += diagnostic("MI_SPRING_BYTECODE_LIMIT", "warning",
-                    "Class file analysis exceeded the per-file or total size limit.", location)
-                if (remainingBytes <= MAX_CLASS_BYTES) break
+                    "A class file exceeded the per-file size limit.", location)
                 continue
             }
+            if (size > remainingBytes) {
+                diagnostics += diagnostic("MI_SPRING_BYTECODE_LIMIT", "warning", "Class files exceeded the total read limit.")
+                break
+            }
+            val bytes = Files.newInputStream(path, NOFOLLOW_LINKS).use { it.readNBytes(size.toInt()) }
             remainingBytes -= bytes.size
+            require(bytes.size >= 4 && ByteBuffer.wrap(bytes).int == 0xCAFEBABE.toInt())
             val reader = ClassReader(bytes)
             val metadata = ClassMetadata()
-            reader.accept(metadata, ClassReader.SKIP_CODE or ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+            try {
+                reader.accept(metadata, ClassReader.SKIP_CODE or ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+            } catch (_: StackOverflowError) {
+                diagnostics += unreadableClass(location)
+                continue
+            }
             val className = reader.className.replace('/', '.')
+            if (className.length + relative.length > MAX_SOURCE_CHARACTERS) {
+                diagnostics += sourceTooLong()
+                continue
+            }
             val source = bytecodeSource(className, relative)
             for (annotation in metadata.annotations.sorted()) {
                 if (annotation in relationalAnnotations) {
+                    if (!hasRoom(1)) break@scan
                     findings += bytecodeFinding(applicationId, "annotation", annotation, source)
                 }
                 if (annotation in propertySourceAnnotations) {
+                    if (!hasRoom(1)) break@scan
                     diagnostics += diagnostic("MI_SPRING_BYTECODE_PROPERTY_SOURCE_UNKNOWN", "warning",
                         "Application code declares an additional property source outside local ConfigData.", source)
                 }
             }
             for (bean in metadata.beans.sortedBy { it.signature }) {
-                val beanSource = bytecodeSource("$className#${bean.signature}", relative)
+                val reference = "$className#${bean.signature}"
+                if (reference.length + relative.length > MAX_SOURCE_CHARACTERS) {
+                    if (!hasRoom(1)) break@scan
+                    diagnostics += sourceTooLong()
+                    continue
+                }
+                val conditional = bean.conditional || metadata.annotations.any(::isConditional)
+                if (!hasRoom(if (conditional) 3 else 2)) break@scan
+                val beanSource = bytecodeSource(reference, relative)
                 findings += bytecodeFinding(applicationId, "bean", BEAN, beanSource)
                 diagnostics += diagnostic("MI_SPRING_BYTECODE_DATASOURCE_UNKNOWN", "warning",
                     "Application code declares a datasource bean. Its runtime implementation and binding are unknown.", beanSource)
-                if (bean.conditional || metadata.annotations.any(::isConditional)) {
+                if (conditional) {
                     diagnostics += diagnostic("MI_SPRING_BYTECODE_CONDITIONAL_BEAN_UNKNOWN", "warning",
                         "A datasource bean depends on a condition or profile that static analysis cannot evaluate.", beanSource)
                 }
@@ -102,6 +141,9 @@ internal fun inspectBytecode(applicationId: String, project: Path, files: Set<Fi
 
 private fun unreadableClass(source: Map<String, Any>) = diagnostic("MI_SPRING_BYTECODE_CLASS_UNKNOWN", "warning",
     "A class file could not be read or uses an unsupported format.", source)
+
+private fun sourceTooLong() = diagnostic("MI_SPRING_BYTECODE_LIMIT", "warning",
+    "A bytecode source reference exceeded the provenance length limit.")
 
 private fun bytecodeSource(reference: String, path: String): Map<String, Any> =
     mapOf("kind" to "bytecode", "reference" to reference, "path" to path)
@@ -135,6 +177,7 @@ private data class DatasourceBean(val signature: String, val conditional: Boolea
 private class ClassMetadata : ClassVisitor(Opcodes.ASM9) {
     val annotations = mutableSetOf<String>()
     val beans = mutableListOf<DatasourceBean>()
+    private val signatures = mutableSetOf<String>()
 
     override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
         annotations += descriptor
@@ -148,6 +191,7 @@ private class ClassMetadata : ClassVisitor(Opcodes.ASM9) {
         signature: String?,
         exceptions: Array<out String>?,
     ): MethodVisitor? {
+        require(signatures.add("$name$descriptor"))
         if (access and (Opcodes.ACC_SYNTHETIC or Opcodes.ACC_BRIDGE) != 0) return null
         return object : MethodVisitor(Opcodes.ASM9) {
             private var bean = false

@@ -59,7 +59,9 @@ Analysis reads class metadata only. It leaves application classes
 unloaded, skips synthetic and bridge methods, and cannot interpret method
 bodies, custom meta-annotations, reflective registrations, or arbitrary
 datasource subtypes. It reports unreadable classes and caps inspection at
-4,096 files, 1 MiB per class and 32 MiB total. See the
+4,096 files, 1 MiB per class and 32 MiB total. It emits at most 512 bytecode
+findings and diagnostics plus a truncation warning, and bounds retained
+source references so the compiler can read the result. See the
 [bytecode ADR](adr/0005-spring-bytecode.md).
 
 ## Local Spring ConfigData

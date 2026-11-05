@@ -281,6 +281,32 @@ def check_bytecode(gradle):
     print("Java/Kotlin JVM annotation, conditional bean and provenance checks passed.")
 
 
+def check_bytecode_limits():
+    library = ADAPTER.parent.parent / "lib"
+    probe = ["java", "-cp", os.pathsep.join(str(path) for path in sorted(library.glob("*.jar"))),
+             ROOT / "tests/fixtures/SpringBytecodeProbe.java"]
+    with tempfile.TemporaryDirectory() as directory:
+        os.mkfifo(Path(directory) / "d-pipe.class")
+        output = success(invoke(probe + [directory, "generate"], timeout=60))
+        success(invoke([READER, "-"], output))
+        doc = json.loads(output)
+        unknown = {entry["source"]["path"] for entry in doc["diagnostics"]
+                   if entry["code"] == "MI_SPRING_BYTECODE_CLASS_UNKNOWN"}
+        assert unknown == {"a-invalid-header.class", "b-duplicate.class", "c-deep.class", "d-pipe.class"}, unknown
+        assert doc["findings"] and all(finding["source"]["path"] == "e-burst.class" for finding in doc["findings"])
+        assert doc["diagnostics"][-1]["code"] == "MI_SPRING_BYTECODE_LIMIT"
+        assert len(doc["findings"]) + len(doc["diagnostics"]) <= 514
+    with tempfile.TemporaryDirectory() as directory:
+        for index in range(33):
+            with (Path(directory) / f"{index:02}.class").open("wb") as file:
+                file.truncate(1024 * 1024)
+        doc = json.loads(success(invoke(probe + [directory], timeout=60)))
+        assert len([entry for entry in doc["diagnostics"] if entry["code"] == "MI_SPRING_BYTECODE_CLASS_UNKNOWN"]) == 32
+        assert doc["diagnostics"][-1]["code"] == "MI_SPRING_BYTECODE_LIMIT"
+        assert "total read limit" in doc["diagnostics"][-1]["message"]
+    print("Malformed bytecode, input limits and compiler-compatible output checks passed.")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gradle", default="gradle")
@@ -291,3 +317,4 @@ if __name__ == "__main__":
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)
+        check_bytecode_limits()
