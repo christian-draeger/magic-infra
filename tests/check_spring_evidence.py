@@ -127,11 +127,23 @@ def check_relational_rules():
                      explain([mysql], "--external", "api", "postgresql", status=4)):
         assert "conflicted rule=relational/v1 MI_RELATIONAL_VENDOR_CONFLICT" in conflict
         assert "mysql, postgresql" in conflict
+    unsupported = {**mysql, "kind": "configuration", "implementation": "sqlserver"}
+    assert "MI_RELATIONAL_VENDOR_UNSUPPORTED" in explain([unsupported])
+    for conflict in (explain([postgres, unsupported], status=4),
+                     explain([unsupported], "--external", "api", "postgresql", status=4)):
+        assert "MI_RELATIONAL_VENDOR_CONFLICT" in conflict and "unsupported vendor" in conflict
+    selected = {**placeholder, "certainty": "observed"}
+    assert "suggested implementation=postgresql" in explain([postgres, mysql, selected])
+    assert "declared implementation=postgresql" in explain([postgres, mysql], "--external", "api", "postgresql")
+    assert "MI_RELATIONAL_VENDOR_CONFLICT" in explain([selected, unsupported, postgres], status=4)
 
     other = {"id": "worker", "module": ":worker", "buildSystem": "gradle"}
     split = explain([postgres, {**mysql, "serviceId": "worker"}], services=[other, *baseline["services"]])
     assert split.startswith("api database.relational suggested implementation=postgresql")
     assert "worker database.relational suggested implementation=mysql" in split
+    unusual = "api\u009b\u202e\u2028"
+    quoted = explain([{**postgres, "serviceId": unusual}], services=[{**other, "id": unusual}])
+    assert quoted.startswith('"api\\u009b\\u202e\\u2028" database.relational') and unusual not in quoted
     invalid = invoke([READER, "explain", "-", "--external", "missing", "postgresql"], json_bytes(baseline))
     rejected(invalid, 2, "MI_EVIDENCE_EXPLAIN_SERVICE")
     print("Relational suggestions, declared external intent, provenance and conflict checks passed.")
@@ -289,10 +301,10 @@ def check_gradle(gradle):
         symlink.unlink()
     unresolved = invoke(command + ["--offline", "-Pfixture.unresolved", ":java-app:springEvidence"], timeout=120)
     assert unresolved.returncode != 0 and b"MI_SPRING_RUNTIME_UNRESOLVED" in unresolved.stdout + unresolved.stderr
-    success(invoke(command + ["-Pfixture.conflict", ":java-app:springEvidence"], timeout=120))
-    mixed = read_json(paths["java"])
+    success(invoke(command + ["-Pfixture.conflict", ":kotlin-app:springEvidence"], timeout=120))
+    mixed = read_json(paths["kotlin"])
     assert {"f-postgresql-driver", "f-mysql-driver"} <= {finding["id"] for finding in mixed["findings"]}
-    conflict = invoke([READER, "explain", paths["java"]])
+    conflict = invoke([READER, "explain", paths["kotlin"]])
     assert conflict.returncode == 4 and b"MI_RELATIONAL_VENDOR_CONFLICT" in conflict.stdout
     print("Java/Kotlin Gradle fixtures passed resolved metadata, cache reuse, repeatability and offline failure checks.")
 

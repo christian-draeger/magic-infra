@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode
 private const val CAPABILITY = "database.relational"
 private const val RULE_VERSION = "relational/v1"
 private const val JPA_STARTER = "org.springframework.boot:spring-boot-starter-data-jpa"
-private val controlCharacter = Regex("[\\p{Cntrl}]")
-private val vendorEvidence = setOf("dependency", "configuration")
+private val plainIdentifier = Regex("[A-Za-z0-9_-]+")
+private val unsafeDisplayCharacter = Regex("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]")
 private val jpaAnnotations = setOf(
     "jakarta.persistence.Entity",
     "javax.persistence.Entity",
@@ -39,15 +39,23 @@ internal data class RelationalSuggestion(
     val ruleVersion: String = RULE_VERSION,
 ) {
     fun explain(): String = buildString {
-        append(serviceId.replace(controlCharacter, "_")).append(' ').append(CAPABILITY)
+        append(displayIdentifier(serviceId)).append(' ').append(CAPABILITY)
         append(' ').append(resolution.name.lowercase())
         vendor?.let { append(" implementation=").append(it.id) }
         append(" rule=").append(ruleVersion).append(' ').append(code).appendLine()
         append("  ").append(explanation).appendLine()
         if (findingIds.isNotEmpty()) {
-            append("  Evidence ").append(findingIds.joinToString(", ") { it.trimEnd() }).appendLine()
+            append("  Evidence ").append(findingIds.joinToString(", ", transform = ::displayIdentifier)).appendLine()
         }
     }
+}
+
+private fun displayIdentifier(id: String): String {
+    if (plainIdentifier.matches(id)) return id
+    val escaped = id.replace("\\", "\\\\").replace("\"", "\\\"")
+    return "\"" + unsafeDisplayCharacter.replace(escaped) { match ->
+        match.value.map { "\\u%04x".format(it.code) }.joinToString("")
+    } + "\""
 }
 
 internal fun suggestRelational(evidence: JsonNode, external: ExternalDatabase? = null): List<RelationalSuggestion> {
@@ -72,16 +80,20 @@ private fun assess(
     declared: DatabaseVendor?,
 ): RelationalSuggestion {
     val observed = findings.filter { it.path("certainty").asText() == "observed" }
-    val vendors = observed.filter { it.path("kind").asText() in vendorEvidence }
-        .mapNotNull { DatabaseVendor.named(it.path("implementation").asText()) }.toMutableSet()
-    declared?.let(vendors::add)
-    val vendor = vendors.singleOrNull()
+    val drivers = observed.vendors("dependency")
+    val selected = observed.vendors("configuration") + listOfNotNull(declared?.id)
+    val selection = selected.singleOrNull()
+    val conflicted = selected.size > 1 ||
+        (selection != null && drivers.isNotEmpty() && selection !in drivers) ||
+        (selected.isEmpty() && drivers.size > 1)
+    val vendorId = selection ?: drivers.singleOrNull()
+    val vendor = vendorId?.let(DatabaseVendor::named)
     val findingIds = findings.map { it.path("id").asText() }.sorted()
     val jpa = observed.any(::isJpaFinding)
     return when {
-        vendors.size > 1 -> RelationalSuggestion(serviceId, Resolution.CONFLICTED, null,
+        conflicted -> RelationalSuggestion(serviceId, Resolution.CONFLICTED, null,
             "MI_RELATIONAL_VENDOR_CONFLICT",
-            "Conflicting database vendors: ${vendors.map(DatabaseVendor::id).sorted().joinToString()}. Resolve the binding before generating infrastructure.",
+            "Conflicting database vendors: ${displayVendors(selected + drivers)}. Resolve the binding before generating infrastructure.",
             findingIds)
         declared != null -> RelationalSuggestion(serviceId, Resolution.DECLARED, declared,
             "MI_RELATIONAL_EXTERNAL_DECLARED",
@@ -93,11 +105,22 @@ private fun assess(
         vendor != null -> RelationalSuggestion(serviceId, Resolution.SUGGESTED, vendor,
             "MI_RELATIONAL_VENDOR_OBSERVED",
             "A database vendor was observed. Confirm the binding and declare ownership explicitly.", findingIds)
+        vendorId != null -> RelationalSuggestion(serviceId, Resolution.SUGGESTED, null,
+            "MI_RELATIONAL_VENDOR_UNSUPPORTED",
+            "The observed vendor is outside the supported relational families.", findingIds)
         else -> RelationalSuggestion(serviceId, Resolution.SUGGESTED, null,
             "MI_RELATIONAL_VENDOR_UNKNOWN",
             "Relational usage is possible. Confirm the database implementation and ownership.", findingIds)
     }
 }
+
+private fun List<JsonNode>.vendors(kind: String): Set<String> =
+    filter { it.path("kind").asText() == kind }.mapNotNull {
+        it.path("implementation").asText().takeIf(String::isNotBlank)
+    }.toSet()
+
+private fun displayVendors(vendors: Set<String>): String =
+    vendors.map { DatabaseVendor.named(it)?.id ?: "unsupported vendor" }.distinct().sorted().joinToString()
 
 private fun isJpaFinding(finding: JsonNode): Boolean {
     val kind = finding.path("kind").asText()

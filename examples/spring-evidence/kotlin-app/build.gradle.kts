@@ -14,3 +14,9 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     compileOnly("com.h2database:h2")
 }
+
+if (providers.gradleProperty("fixture.conflict").isPresent) {
+    dependencies {
+        runtimeOnly("com.mysql:mysql-connector-j")
+    }
+}

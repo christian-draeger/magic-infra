@@ -8,7 +8,9 @@ Accepted
 
 Apply a small versioned rule set to validated relational findings grouped
 by service. Correlate independent JPA and PostgreSQL observations. Surface
-multiple observed vendors as a conflict. Pass any explicit external intent
+unresolved driver choices and contradictory effective configuration as
+conflicts. A selected vendor with matching driver evidence can coexist with
+unused drivers. Pass any explicit external intent
 through a separate input owned by the caller. Evidence from an adapter
 cannot serve as that input.
 

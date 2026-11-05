@@ -17,11 +17,14 @@ compiler/evidence/build/install/evidence-check/bin/evidence-check \
 | PostgreSQL driver only | Suggested PostgreSQL binding |
 | JPA and a PostgreSQL driver or configuration observation | Suggested PostgreSQL binding with both sources |
 | Explicit existing database | Declared external binding |
-| Multiple observed vendors or disagreement with an explicit binding | Conflict that requires a binding decision |
+| Several drivers without a selected vendor, contradictory configuration, or a selected vendor with only incompatible drivers | Conflict that requires a binding decision |
 
 Uncertain findings stay visible in the explanation. They do not choose a
 vendor. A supported vendor reported by an observed dependency or effective
-configuration can identify a candidate. Evidence alone never authorizes
+configuration can identify a candidate. An effective configuration or
+explicit declaration selects among available drivers when a matching
+driver is present. An observed unsupported vendor can still conflict with
+other observations. Evidence alone never authorizes
 resource creation. A declaration-shaped finding from an adapter cannot set
 ownership.
 
