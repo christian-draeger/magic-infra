@@ -47,7 +47,7 @@ internal object DeploymentPlanPreview {
             operation("bind", serviceId, "low", "Bind service $serviceId to PostgreSQL resource $resourceId.")
         }
         val prerequisites = buildList {
-            add(prerequisite("compose-v2", "Provide a Docker engine with Compose support."))
+            add(prerequisite("compose-v2", "Provide a Docker engine with Compose 2.30 or later."))
             for (service in model.path("services")) {
                 val id = service.path("id").asText()
                 val image = service.path("build").path("imageRef").asText()

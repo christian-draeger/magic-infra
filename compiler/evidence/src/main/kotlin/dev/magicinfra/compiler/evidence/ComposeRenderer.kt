@@ -58,7 +58,7 @@ internal object ComposeRenderer {
             )
         }
 
-        val document = linkedMapOf<String, Any>("name" to "$app-$environment", "services" to services)
+        val document = linkedMapOf<String, Any>("name" to "${app}_$environment", "services" to services)
         if (volumes.isNotEmpty()) document["volumes"] = volumes
         val options = DumperOptions().apply {
             defaultFlowStyle = DumperOptions.FlowStyle.BLOCK

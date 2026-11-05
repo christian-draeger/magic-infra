@@ -290,6 +290,7 @@ def check_plan_preview():
             assert plan["target"] == {"backend": "docker-compose", "environment": "dev"}
             assert plan["artifacts"] == [{"path": "compose.yaml", "kind": "compose-manifest"}]
             assert plan["diagnostics"] == evidence["diagnostics"]
+            assert "2.30" in plan["prerequisites"][0]["description"]
             actions = [operation["action"] for operation in plan["operations"]]
             assert actions == ["create" if management == "managed" else "reference", "bind"]
             assert not list(scratch.iterdir()), "Preview wrote files to its working directory"
@@ -335,7 +336,7 @@ def check_compose_renderer():
         output = success(invoke(command))
         assert output == success(invoke(command))
         compose = yaml.safe_load(output)
-        assert compose["name"] == "shop-dev"
+        assert compose["name"] == "shop_dev"
         app = compose["services"]["api"]
         assert app["ports"] == ["127.0.0.1:8080:8080"]
         assert app["env_file"] == [{"path": "./secrets/shop-db-credentials.env", "format": "raw"}]
@@ -351,6 +352,17 @@ def check_compose_renderer():
             assert "depends_on" not in app
             assert app["environment"]["SPRING_DATASOURCE_URL"] == "${SHOP_DB_URL:?Set SHOP_DB_URL}"
         rejected(invoke(command + ["--require-host-failover"]), 4, "MI_COMPOSE_HOST_FAILOVER", "multiple hosts")
+    evidence = read_json(evidence_path)
+    base = (directory / "managed.yaml").read_text()
+    names = []
+    with tempfile.TemporaryDirectory() as folder:
+        declaration = Path(folder) / "infra.yaml"
+        for app, environment in (("shop-dev", "blue"), ("shop", "dev-blue")):
+            declaration.write_text(base.replace("applicationId: shop", f"applicationId: {app}"))
+            source = {**evidence, "application": {**evidence["application"], "id": app}}
+            output = success(invoke([READER, "generate", "-", declaration, environment], json_bytes(source)))
+            names.append(yaml.safe_load(output)["name"])
+    assert names == ["shop-dev_blue", "shop_dev-blue"]
     print("Compose artifact repeatability, managed/external ownership and host-failover checks passed.")
 
 

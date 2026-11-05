@@ -6,8 +6,8 @@ directory where you want to review the Compose file.
 
 ```sh
 evidence-check plan evidence.json infra.yaml dev
-evidence-check generate evidence.json infra.yaml dev > compose.yaml
-docker compose -f compose.yaml config --quiet
+evidence-check generate evidence.json infra.yaml dev > compose.preview.yaml
+docker compose -f compose.preview.yaml config --quiet
 ```
 
 The renderer uses a prebuilt application image. Application ports are
@@ -17,6 +17,10 @@ service waits for the PostgreSQL healthcheck before it starts. An external
 resource is supplied through an endpoint environment reference and adds
 no database service or volume. Compose configuration validation needs the
 referenced environment variables and credential files to be available.
+Compose project names join the application and environment IDs with an
+underscore, keeping different pairs distinct. The app's HTTP health path
+remains runtime metadata for an external probe. The renderer adds the
+database healthcheck to the Compose file.
 
 ## Supply local credentials
 
@@ -30,6 +34,8 @@ later for this format. See the
 For Spring, provide `SPRING_DATASOURCE_USERNAME` and
 `SPRING_DATASOURCE_PASSWORD`. For a managed database, provide matching
 `POSTGRES_USER` and `POSTGRES_PASSWORD` entries in the same local file.
+The first slice uses the managed database's bootstrap login for the app.
+That login has PostgreSQL superuser privileges.
 The generated environment sets the database name and JDBC URL. For an
 external database, provide the variable named by `endpointRef` to the
 Compose CLI and use credentials for the existing database.
