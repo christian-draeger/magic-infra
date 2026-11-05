@@ -12,7 +12,7 @@ binds the same service to an existing database. Both use the
 | Field | Meaning |
 | --- | --- |
 | `applicationId` | Stable identifier matching the analyzed application. |
-| `services` | Service IDs mapped to a prebuilt `imageRef` and container `port`. Use a tagged image or a SHA-256 digest. |
+| `services` | Service IDs mapped to a prebuilt `imageRef`, container `port` and optional HTTP `healthPath`. Use a tagged image or a SHA-256 digest. |
 | `resources` | Resource IDs mapped to kind, explicit management and deletion policy. The first slice supports PostgreSQL and `retain`. |
 | `bindings` | Pairs of existing `serviceId` and `resourceId`. A service has at most one database binding in this version. |
 
@@ -22,6 +22,7 @@ logical database name and a `secretRef`. The endpoint is the name of an
 environment variable available at deployment. The secret is a logical
 reference. Keep the endpoint value, username and password outside this file.
 Target-specific configuration belongs to the backend.
+The [OCI runtime guide](OCI-RUNTIME.md) shows how to supply the image separately.
 
 ## Validate a declaration
 

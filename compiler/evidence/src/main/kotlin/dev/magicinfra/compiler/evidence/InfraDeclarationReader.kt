@@ -30,7 +30,7 @@ internal object InfraDeclarationReader {
     private const val MAX_BYTES = 256 * 1024
     private val mapper = JsonMapper.builder().build()
     private val schemaFields = setOf("schemaVersion", "applicationId", "services", "resources", "bindings", "imageRef",
-        "port", "kind", "management", "deletionPolicy", "database", "secretRef", "storageSize", "endpointRef",
+        "port", "healthPath", "kind", "management", "deletionPolicy", "database", "secretRef", "storageSize", "endpointRef",
         "serviceId", "resourceId", "password")
     private val displayControl = Regex("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]")
     private val schema by lazy {
@@ -84,6 +84,9 @@ internal object InfraDeclarationReader {
         }
         if (version.asText() != VERSION) {
             throw InfraRejected("MI_INFRA_VERSION", "Migrate the declaration to $VERSION.", 3)
+        }
+        if (declaration.path("services").any { it.has("build") }) {
+            throw InfraRejected("MI_INFRA_BUILD_MODE", "Build the image separately and set imageRef on each service.")
         }
         val error = schema.validate(declaration).minWithOrNull(compareBy({ it.instanceLocation.toString() }, { it.keyword }))
         if (error != null) {
