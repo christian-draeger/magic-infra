@@ -7,9 +7,7 @@ Resource ownership and deployment choices live in a separate contract.
 
 ## Try the Gradle task
 
-The current fixtures exercise Spring Boot 3.5.16, Gradle 8.5 and JDK 21,
-with Kotlin 2.2.21 in the Kotlin project. Use this command at the repository
-root:
+Run the fixtures from the repository root:
 
 ```sh
 gradle -p examples/spring-evidence --configuration-cache \
@@ -38,6 +36,26 @@ symbolic links cannot leave stale Evidence.
 The default task leaves the application uncompiled and stopped. Running Gradle
 still runs the project's normal build logic with the invoking user's
 permissions.
+
+## Tested combinations
+
+| Fixture | Application language | Spring Boot | Gradle | JDK |
+| --- | --- | --- | --- | --- |
+| `java-app` | Java | 3.5.16 | 8.5 | 21 |
+| `kotlin-app` | Kotlin 2.2.21 | 3.5.16 | 8.5 | 21 |
+
+The integration suite checks both fixtures with and without bytecode
+inspection. It verifies configuration-cache reuse and byte-identical
+Evidence on repeat runs. A symlink introduced between runs invalidates
+local analysis even when Gradle reuses the configured task graph. Other
+fixtures cover profile order, optional and external imports, unresolved
+placeholders, custom and conditional beans, contradictory JDBC drivers and
+malformed bytecode.
+
+The adapter warns when it sees an untested Spring Boot runtime version.
+The warning is tested with Boot 4 coordinates supplied through the
+standalone protocol. Local ConfigData still uses the bundled 3.5.16
+parser. The table covers only the verified toolchains.
 
 ## Opt-in JVM bytecode analysis
 
@@ -132,6 +150,7 @@ diagnostic source shape and the `info`, `warning`, and `error` severities.
 | Adapter code | Severity | Meaning |
 | --- | --- | --- |
 | `MI_SPRING_BOOT_RUNTIME_UNKNOWN` | warning | The selected runtime graph does not identify a unique Boot version. |
+| `MI_SPRING_BOOT_RUNTIME_UNVERIFIED` | warning | The selected Boot version is outside the tested matrix. |
 | `MI_SPRING_AMBIGUOUS_COMPONENT` | error | Multiple versions of a recognized component were supplied. |
 | `MI_SPRING_APPLICATION_ID` | error | The service ID is not a lowercase identifier starting with a letter. |
 | `MI_SPRING_INVALID_REQUEST` | error | The request is malformed or violates a field constraint. |
@@ -171,6 +190,8 @@ categories for I/O, invalid Evidence and an unsupported Evidence version.
 A successful validation is silent. Request and Evidence versions evolve
 independently. The current request and Evidence input limits are 1 MiB and
 4 MiB respectively.
+Use [`evidence-check explain`](EVIDENCE-RULES.md) to inspect relational
+suggestions and conflicts.
 
 For the integration checks, install the
 [test dependencies](../CONTRIBUTING.md#run-the-checks) and run

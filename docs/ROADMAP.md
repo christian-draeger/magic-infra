@@ -1,8 +1,7 @@
 # Engineering roadmap
 
-Milestones describe outcomes and have no fixed dates. The compiler is in
-planning. Spring Boot and Gradle are the first analysis targets; supported
-versions will follow from tested fixtures.
+Milestones describe outcomes and have no fixed dates. Spring Boot and Gradle
+are the first analysis targets. See the [tested adapter combinations](SPRING-EVIDENCE.md#tested-combinations).
 
 | Milestone | What we need to prove |
 | --- | --- |

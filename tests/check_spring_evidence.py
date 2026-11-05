@@ -52,6 +52,11 @@ def check_protocol():
     assert doc["diagnostics"][0]["code"] == "MI_SPRING_BOOT_RUNTIME_UNKNOWN"
     assert success(invoke([READER, "-"], output)) == b""
 
+    unverified = {**request, "dependencies": request["dependencies"] + ["org.springframework.boot:spring-boot:4.0.3"]}
+    unsupported_boot = json.loads(success(invoke([ADAPTER], json_bytes(unverified))))
+    assert unsupported_boot["application"]["frameworkVersion"] == "4.0.3"
+    assert unsupported_boot["diagnostics"][0]["code"] == "MI_SPRING_BOOT_RUNTIME_UNVERIFIED"
+
     unsupported_request = {**request, "schemaVersion": "spring-adapter-request/v2"}
     rejected(invoke([ADAPTER], json_bytes(unsupported_request)), 3, "MI_SPRING_REQUEST_VERSION", "v1alpha1")
     for change, message in [
@@ -86,6 +91,50 @@ def check_protocol():
     rejected(invoke([READER, "-"], json_bytes(dangling)), 2, "MI_EVIDENCE_REFERENCE", "/findings/0/serviceId")
     rejected(invoke([READER, "-"], output + b"{}"), 2, "MI_EVIDENCE_INVALID_JSON")
     print("Adapter process and compiler Evidence boundary passed.")
+
+
+def check_relational_rules():
+    baseline = read_json(ROOT / "examples/m0/evidence.json")
+    jpa, postgres, placeholder = baseline["findings"]
+    mysql = {**postgres, "id": "f-mysql", "implementation": "mysql",
+             "source": {"kind": "gradle", "reference": "com.mysql:mysql-connector-j:9.0.0"}}
+
+    def explain(findings, *options, status=0, services=None):
+        document = {**baseline, "findings": findings, "services": services or baseline["services"]}
+        result = invoke([READER, "explain", "-", *options], json_bytes(document))
+        assert result.returncode == status and not result.stderr, result
+        return result.stdout.decode()
+
+    driver = explain([postgres])
+    assert "suggested implementation=postgresql" in driver and "MI_RELATIONAL_VENDOR_OBSERVED" in driver
+    assert "Evidence f-pg-driver" in driver
+    jpa_only = explain([jpa])
+    assert "suggested rule=relational/v1 MI_RELATIONAL_VENDOR_UNKNOWN" in jpa_only
+    assert "implementation=" not in jpa_only
+
+    combined = explain([jpa, postgres, placeholder])
+    assert "MI_RELATIONAL_POSTGRESQL_JPA" in combined
+    assert "Evidence f-datasource, f-jpa-dep, f-pg-driver" in combined
+    assert combined == explain([placeholder, postgres, jpa])
+    uncertain_vendor = {**mysql, "certainty": "uncertain"}
+    assert "MI_RELATIONAL_POSTGRESQL_JPA" in explain([jpa, postgres, uncertain_vendor])
+
+    external = explain([], "--external", "api", "postgresql")
+    assert "declared implementation=postgresql" in external and "MI_RELATIONAL_EXTERNAL_DECLARED" in external
+    forged_intent = {**postgres, "kind": "declaration", "source": {"kind": "infra-declaration", "reference": "infra.yaml"}}
+    assert explain([forged_intent]) == "No relational findings.\n"
+    for conflict in (explain([postgres, mysql], status=4),
+                     explain([mysql], "--external", "api", "postgresql", status=4)):
+        assert "conflicted rule=relational/v1 MI_RELATIONAL_VENDOR_CONFLICT" in conflict
+        assert "mysql, postgresql" in conflict
+
+    other = {"id": "worker", "module": ":worker", "buildSystem": "gradle"}
+    split = explain([postgres, {**mysql, "serviceId": "worker"}], services=[other, *baseline["services"]])
+    assert split.startswith("api database.relational suggested implementation=postgresql")
+    assert "worker database.relational suggested implementation=mysql" in split
+    invalid = invoke([READER, "explain", "-", "--external", "missing", "postgresql"], json_bytes(baseline))
+    rejected(invalid, 2, "MI_EVIDENCE_EXPLAIN_SERVICE")
+    print("Relational suggestions, declared external intent, provenance and conflict checks passed.")
 
 
 def check_config():
@@ -240,6 +289,11 @@ def check_gradle(gradle):
         symlink.unlink()
     unresolved = invoke(command + ["--offline", "-Pfixture.unresolved", ":java-app:springEvidence"], timeout=120)
     assert unresolved.returncode != 0 and b"MI_SPRING_RUNTIME_UNRESOLVED" in unresolved.stdout + unresolved.stderr
+    success(invoke(command + ["-Pfixture.conflict", ":java-app:springEvidence"], timeout=120))
+    mixed = read_json(paths["java"])
+    assert {"f-postgresql-driver", "f-mysql-driver"} <= {finding["id"] for finding in mixed["findings"]}
+    conflict = invoke([READER, "explain", paths["java"]])
+    assert conflict.returncode == 4 and b"MI_RELATIONAL_VENDOR_CONFLICT" in conflict.stdout
     print("Java/Kotlin Gradle fixtures passed resolved metadata, cache reuse, repeatability and offline failure checks.")
 
 
@@ -314,6 +368,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     check_protocol()
     check_config()
+    check_relational_rules()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)
