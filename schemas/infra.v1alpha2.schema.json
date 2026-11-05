@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:magic-infra:schema:infra:v1alpha2",
+  "title": "magic-infra declaration v1alpha2",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "infra/v1alpha2"
+    },
+    "applicationId": {
+      "$ref": "#/$defs/id"
+    },
+    "services": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/service"
+      },
+      "minProperties": 1,
+      "maxProperties": 128
+    },
+    "resources": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/resource"
+      },
+      "minProperties": 0,
+      "maxProperties": 128
+    },
+    "bindings": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/binding"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "applicationId",
+    "services",
+    "resources",
+    "bindings"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,62}(?![\\s\\S])"
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "imageRef": {
+          "type": "string",
+          "pattern": "^(?=[\\s\\S]{1,320}(?![\\s\\S]))(?:[a-z0-9]+(?:[.-][a-z0-9]+)*(?::[0-9]{1,5})?/)?[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}|@sha256:[a-f0-9]{64})(?![\\s\\S])",
+          "maxLength": 320
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "imageRef",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "postgresql"
+        },
+        "management": {
+          "enum": [
+            "managed",
+            "external"
+          ]
+        },
+        "deletionPolicy": {
+          "const": "retain"
+        },
+        "database": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,62}(?![\\s\\S])"
+        },
+        "secretRef": {
+          "$ref": "#/$defs/id"
+        },
+        "storageSize": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,5}Gi(?![\\s\\S])"
+        },
+        "endpointRef": {
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]{0,127}(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "kind",
+        "management",
+        "deletionPolicy",
+        "database",
+        "secretRef"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "management": {
+            "const": "managed"
+          }
+        },
+        "required": [
+          "management"
+        ]
+      },
+      "then": {
+        "required": [
+          "storageSize"
+        ],
+        "properties": {
+          "endpointRef": false
+        }
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "management": {
+              "const": "external"
+            }
+          },
+          "required": [
+            "management"
+          ]
+        },
+        "then": {
+          "required": [
+            "endpointRef"
+          ],
+          "properties": {
+            "storageSize": false
+          }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "properties": {
+        "serviceId": {
+          "$ref": "#/$defs/id"
+        },
+        "resourceId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "serviceId",
+        "resourceId"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

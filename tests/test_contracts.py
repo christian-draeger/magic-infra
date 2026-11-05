@@ -14,8 +14,8 @@ def read_json(path):
     return json.loads(path.read_text())
 
 
-def validate_schema(document, contract):
-    schema = read_json(ROOT / "schemas" / f"{contract}.v1alpha1.schema.json")
+def validate_schema(document, contract, version="v1alpha1"):
+    schema = read_json(ROOT / "schemas" / f"{contract}.{version}.schema.json")
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(document)
 
