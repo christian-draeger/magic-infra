@@ -20,6 +20,7 @@
   ],
   "limitations": [
     "Compilation preview only.",
+    "Compose does not enforce the declared storage size.",
     "Single-host Compose cannot provide host failover."
   ],
   "mode": "compile-preview",

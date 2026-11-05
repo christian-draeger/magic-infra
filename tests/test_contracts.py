@@ -98,6 +98,8 @@ class ContractsTest(unittest.TestCase):
                     plan = read_json(directory / f"plan.{target}.json")
                     validate_bundle(self.evidence, model, plan)
                     self.assertEqual(plan["artifacts"][0]["path"], artifact)
+                    if mode == "managed" and target == "docker-compose":
+                        self.assertIn("Compose does not enforce the declared storage size.", plan["limitations"])
                     verify_artifact(read_json(directory / artifact), target, mode)
 
     def test_schema_rejects_invalid_documents(self):

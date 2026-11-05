@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"sort"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 type object = map[string]any
@@ -173,7 +173,9 @@ func compile(target string, e evidence, d declaration, ids []string, modules map
 	var artifact object
 	if target == "docker-compose" {
 		prereqs = append(prereqs, prerequisite("credentials", "Provide the referenced local credentials env file."))
-		if !managed {
+		if managed {
+			limitations = append(limitations, "Compose does not enforce the declared storage size.")
+		} else {
 			prereqs = append(prereqs, prerequisite("endpoint", "Provide the external JDBC URL through the referenced environment variable."))
 		}
 		limitations = append(limitations, "Single-host Compose cannot provide host failover.")

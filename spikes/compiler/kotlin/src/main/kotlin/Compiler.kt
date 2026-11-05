@@ -142,7 +142,9 @@ private fun compile(target: String, input: Input): Map<String, Any> {
     val path = if (isCompose) "compose.yaml" else "kubernetes.yaml"
     if (isCompose) {
         prereqs += prerequisite("credentials", "Provide the referenced local credentials env file.")
-        if (!db.managed) {
+        if (db.managed) {
+            limitations += "Compose does not enforce the declared storage size."
+        } else {
             prereqs += prerequisite("endpoint", "Provide the external JDBC URL through the referenced environment variable.")
         }
         limitations += "Single-host Compose cannot provide host failover."
