@@ -61,7 +61,7 @@ pkgs.testers.runNixOSTest {
         password = uuid4().hex
         write_private(files / "psql-input", f"{password}\n{password}\n")
         database.copy_from_host(str(files / "psql-input"), "/tmp/psql-input")
-        database.succeed(r"runuser -u postgres -- psql -Xq -v ON_ERROR_STOP=1 -c '\password fixture' < /tmp/psql-input")
+        database.succeed(r"setsid --wait timeout 30s runuser -u postgres -- psql -Xq -v ON_ERROR_STOP=1 -c '\password fixture' < /tmp/psql-input")
         database.succeed("rm /tmp/psql-input")
 
         credentials_content = f"SPRING_DATASOURCE_USERNAME=fixture\nSPRING_DATASOURCE_PASSWORD={password}\n"
