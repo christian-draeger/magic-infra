@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "evidence/v1alpha1",
+  "adapter": { "id": "fixture", "version": "0.1.0-draft", "rulesVersion": "0.1.0-draft" },
+  "application": { "id": "static-web", "framework": "nginx", "language": "other" },
+  "analysis": {
+    "profiles": [],
+    "limitations": ["Synthetic Evidence for a prebuilt workload"],
+    "environmentScope": "explicit-snapshot"
+  },
+  "services": [{ "id": "web", "module": ".", "buildSystem": "fixture" }],
+  "findings": [],
+  "diagnostics": []
+}

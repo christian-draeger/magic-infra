@@ -1,0 +1,32 @@
+{
+  "schemaVersion" : "plan/v1alpha1",
+  "applicationId" : "static-web",
+  "target" : {
+    "backend" : "nixos",
+    "environment" : "dev"
+  },
+  "mode" : "compile-preview",
+  "operations" : [ {
+    "id" : "create-web",
+    "resourceId" : "web",
+    "action" : "create",
+    "risk" : "low",
+    "description" : "Configure the Podman container for service web when activated.",
+    "requiresApproval" : false
+  } ],
+  "prerequisites" : [ {
+    "id" : "nixos-podman",
+    "description" : "Import the module on a NixOS host with Podman as its OCI backend.",
+    "required" : true
+  }, {
+    "id" : "image-web",
+    "description" : "Make image docker.io/library/nginx@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236 available for service web.",
+    "required" : true
+  } ],
+  "artifacts" : [ {
+    "path" : "magic-infra.nix",
+    "kind" : "nixos-module"
+  } ],
+  "diagnostics" : [ ],
+  "limitations" : [ "Compilation preview. No deployed state was read.", "Application health requires an external probe.", "Single-host NixOS cannot provide host failover." ]
+}

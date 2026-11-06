@@ -18,7 +18,8 @@
           "type": "string",
           "enum": [
             "docker-compose",
-            "kubernetes"
+            "kubernetes",
+            "nixos"
           ]
         },
         "environment": {

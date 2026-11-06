@@ -28,7 +28,7 @@ fun main(rawArgs: Array<String>) {
                 readInput(args[1], infra = true, read = InfraDeclarationReader::read)
             args.size >= 2 && args[0] == "explain" -> explain(args, structured)
             args.size == 3 && args[0] == "resolve" -> compile(args[1], args[2])
-            args.size in 3..5 && args[0] in setOf("plan", "generate") -> target(args)
+            args.size in 3..7 && args[0] in setOf("plan", "generate") -> target(args)
             else -> usage()
         }
     } catch (failure: EvidenceRejected) {
@@ -61,16 +61,29 @@ private fun init(id: String, image: String, port: String) {
 }
 
 private fun target(args: Array<String>) {
-    val options = args.drop(3)
-    if ("--require-host-failover" in options) {
-        throw EvidenceRejected("MI_COMPOSE_HOST_FAILOVER",
-            "Single-host Compose cannot provide host failover. Select a target with multiple hosts.", 4)
+    val options = args.drop(3).toMutableList()
+    val selection = options.indexOf("--target")
+    val backend = if (selection == -1) DeploymentTarget.COMPOSE else {
+        options.removeAt(selection)
+        val name = options.getOrNull(selection) ?: usage()
+        options.removeAt(selection)
+        DeploymentTarget.entries.firstOrNull { it.id == name } ?: usage()
+    }
+    if (options.remove("--require-host-failover")) {
+        throw EvidenceRejected("MI_${backend.diagnosticPrefix}_HOST_FAILOVER",
+            "Single-host ${backend.label} cannot provide host failover. Select a target with multiple hosts.", 4)
     }
     if (options.size > 1 || options.any { it.startsWith("--") }) usage()
-    compile(args[1], args[2], options.singleOrNull() ?: "dev", args[0] == "generate")
+    compile(args[1], args[2], options.singleOrNull() ?: "dev", args[0] == "generate", backend)
 }
 
-private fun compile(evidencePath: String, declarationPath: String, environment: String? = null, render: Boolean = false) {
+private fun compile(
+    evidencePath: String,
+    declarationPath: String,
+    environment: String? = null,
+    render: Boolean = false,
+    backend: DeploymentTarget = DeploymentTarget.COMPOSE,
+) {
     if (evidencePath == "-" && declarationPath == "-") usage()
     val evidence = readInput(evidencePath, read = EvidenceReader::read)
     val declaration = readInput(declarationPath, infra = true, read = InfraDeclarationReader::read)
@@ -79,8 +92,13 @@ private fun compile(evidencePath: String, declarationPath: String, environment: 
         writeJson(model)
         return
     }
-    val plan = DeploymentPlanPreview.plan(model, evidence, environment)
-    if (render) print(ComposeRenderer.render(model, plan)) else writeJson(plan)
+    val plan = DeploymentPlanPreview.plan(model, evidence, environment, backend)
+    if (render) {
+        print(when (backend) {
+            DeploymentTarget.COMPOSE -> ComposeRenderer.render(model, plan)
+            DeploymentTarget.NIXOS -> NixosRenderer.render(model, plan)
+        })
+    } else writeJson(plan)
 }
 
 private fun explain(args: Array<String>, structured: Boolean) {
@@ -116,7 +134,8 @@ private fun <T> readInput(path: String, infra: Boolean = false, read: (InputStre
 
 private fun usage(): Nothing = throw EvidenceRejected("MI_EVIDENCE_USAGE",
     "Use evidence-check with init <id> <image> <port>, analyze <evidence>, validate-infra <declaration>, " +
-        "explain <evidence>, resolve <evidence> <declaration>, or plan/generate <evidence> <declaration> [environment].")
+        "explain <evidence>, resolve <evidence> <declaration>, or plan/generate <evidence> <declaration> " +
+        "[environment] [--target docker-compose|nixos].")
 
 private fun unreadableInput(infra: Boolean): Nothing {
     if (infra) throw InfraRejected("MI_INFRA_IO", "Provide a readable declaration file or pipe it through stdin.", 1)

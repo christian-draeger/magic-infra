@@ -16,7 +16,7 @@ model:
   the app and its dependencies, without hand-writing the Compose file.
 - **Compose on a VPS:** Ship that app to your own server with reviewable
   services, volumes and secret references. For a NixOS server, see the
-  [planned NixOS target](#nixos-on-your-vps).
+  [NixOS app module](#nixos-on-your-vps).
 - **An existing Kubernetes cluster (planned):** Add a service, bind infrastructure
   you already operate, and review changes to manifests as the app evolves.
 
@@ -26,15 +26,15 @@ must demonstrate.
 ## NixOS on your VPS
 
 For a single server, NixOS lets you keep app services and host settings in
-one declarative configuration. The planned backend generates an app module
-from the same Application Model. Review it in Git and import it alongside
+one declarative configuration. The first backend slice generates an app
+module from the same Application Model. Review it in Git and import it alongside
 your existing host settings. You decide when to activate it with your NixOS
 workflow. System generations let you revert configuration changes. Backups
 and PostgreSQL migrations have their own recovery process.
 
-The first spike uses a prebuilt app image and native PostgreSQL. A later
+The PostgreSQL spike uses a prebuilt app image and native PostgreSQL. A later
 systemd mode would run a versioned app package directly. See the
-[roadmap](ROADMAP.md#planned-target-after-m3-nixos-on-a-vps) and the
+[roadmap](ROADMAP.md#nixos-on-a-vps) and the
 [NixOS configuration guide](https://nixos.org/manual/nixos/stable/#sec-changing-config).
 
 ## What makes it magic
@@ -45,7 +45,7 @@ You can confirm managed PostgreSQL, bind a database you already run, or leave
 the question unresolved. The compiler resolves that choice into the
 **Application Model**, then turns it into a target-specific **Deployment Plan**
 with prerequisites, diagnostics and changes you can review. Compose, Kubernetes
-and the planned NixOS backend share the intent. Their storage, availability and
+and NixOS share the intent. Their storage, availability and
 operations differ.
 
 The files should outlive the compiler. Commit them, review diffs, and deploy
