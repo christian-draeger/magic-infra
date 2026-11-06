@@ -13,22 +13,50 @@ internal object NixosRenderer {
         val app = model.path("application").path("id").asText()
         val environment = plan.path("target").path("environment").asText()
         val resources = model.path("resources").associateBy { it.path("id").asText() }
+        val managed = resources.filterValues { it.path("management").asText() == "managed" }.mapValues { (id, resource) ->
+            NixosManagedPostgresql(app, environment, id, resource)
+        }
         val files = model.path("bindings").associate { binding ->
             val id = binding.path("serviceId").asText()
-            val connection = resources.getValue(binding.path("resourceId").asText()).path("connection")
-            id to ExternalFiles(
-                nixosCredentialsPath(app, environment, connection.path("secretRef").asText()),
-                nixosEndpointPath(app, environment, connection.path("endpointRef").asText()),
+            val resourceId = binding.path("resourceId").asText()
+            val connection = resources.getValue(resourceId).path("connection")
+            val postgres = managed[resourceId]
+            id to BindingFiles(
+                postgres?.credentials ?: nixosCredentialsPath(app, environment, connection.path("secretRef").asText()),
+                postgres?.endpoint ?: nixosEndpointPath(app, environment, connection.path("endpointRef").asText()),
+                postgres,
             )
         }
-        appendLine(if (files.isEmpty()) "{ config, ... }:" else "{ config, lib, pkgs, ... }:")
-        if (files.isNotEmpty()) appendLine(runtimeFileCheck)
+        val hasRuntimeFiles = files.isNotEmpty() || managed.isNotEmpty()
+        appendLine(if (hasRuntimeFiles) "{ config, lib, pkgs, ... }:" else "{ config, ... }:")
+        if (hasRuntimeFiles) {
+            appendLine(runtimeFileCheck)
+            if (managed.isNotEmpty()) appendLine(NixosManagedPostgresql.authenticationCheck)
+            appendLine("in")
+        }
         appendLine("{")
         appendLine("  assertions = [")
         appendLine("    {")
         appendLine("      assertion = config.virtualisation.oci-containers.backend == \"podman\";")
         appendLine("      message = \"magic-infra requires Podman as the host OCI backend.\";")
         appendLine("    }")
+        if (managed.isNotEmpty()) {
+            val ports = model.path("services").joinToString(" ") { it.path("runtime").path("port").asText() }
+            appendLine("    {")
+            appendLine("      assertion = !(builtins.elem config.services.postgresql.settings.port [ $ports ]);")
+            appendLine("      message = \"magic-infra app ports must differ from the native PostgreSQL port.\";")
+            appendLine("    }")
+        }
+        managed.values.forEach { appendLine(it.assertion) }
+        for ((id, input) in files) {
+            if (input.postgres == null) continue
+            val name = "magic-infra-${app}_${environment}_$id"
+            appendLine("    {")
+            appendLine("      assertion = config.virtualisation.oci-containers.backend != \"podman\" ||")
+            appendLine("        config.virtualisation.oci-containers.containers.\"$name\".podman.user == \"root\";")
+            appendLine("      message = \"magic-infra managed PostgreSQL requires rootful Podman for $name.\";")
+            appendLine("    }")
+        }
         appendLine("  ];")
         appendLine("  virtualisation.oci-containers.containers = {")
         // The declaration and environment validators restrict values to Nix-safe ASCII.
@@ -41,22 +69,35 @@ internal object NixosRenderer {
             appendLine("      ports = [ \"127.0.0.1:$port:$port\" ];")
             files[id]?.let { input ->
                 appendLine("      environmentFiles = [ \"${input.credentials}\" \"${input.endpoint}\" ];")
+                input.postgres?.let {
+                    appendLine("      environment.SPRING_DATASOURCE_USERNAME = \"${it.role}\";")
+                    appendLine("      extraOptions = [ \"--network=${it.network}\" ];")
+                }
             }
             appendLine("    };")
         }
         appendLine("  };")
         for ((id, input) in files) {
             val serviceName = "\${config.virtualisation.oci-containers.containers.\"magic-infra-${app}_${environment}_$id\".serviceName}"
-            appendLine("  systemd.services.$serviceName.preStart = lib.mkBefore ''")
-            appendLine("    \${checkRuntimeInput}")
-            appendLine("    check_runtime_input \"${input.credentials}\" SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD")
-            appendLine("    check_runtime_input \"${input.endpoint}\" SPRING_DATASOURCE_URL")
-            appendLine("  '';")
+            if (input.postgres == null) {
+                appendLine("  systemd.services.$serviceName.preStart = lib.mkBefore ''")
+                appendLine("    \${checkRuntimeInput}")
+                appendLine("    check_runtime_input \"${input.credentials}\" SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD")
+                appendLine("    check_runtime_input \"${input.endpoint}\" SPRING_DATASOURCE_URL")
+                appendLine("  '';")
+            } else {
+                val dependencies = "[ \"${input.postgres.provision}.service\" \"${input.postgres.proxy}.service\" ]"
+                appendLine("  systemd.services.$serviceName = {")
+                appendLine("    requires = $dependencies;")
+                appendLine("    after = $dependencies;")
+                appendLine("  };")
+            }
         }
+        if (managed.isNotEmpty()) appendLine(NixosManagedPostgresql.hostSettings(managed.values))
         appendLine("}")
     }
 
-    private data class ExternalFiles(val credentials: String, val endpoint: String)
+    private data class BindingFiles(val credentials: String, val endpoint: String, val postgres: NixosManagedPostgresql?)
 
     private val runtimeFileCheck = """
         let
@@ -94,6 +135,5 @@ internal object NixosRenderer {
               fi
             }
           '';
-        in
     """.trimIndent()
 }

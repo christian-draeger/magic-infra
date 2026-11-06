@@ -26,7 +26,7 @@ for the Score analysis and later compatibility experiments.
 
 The [app module](https://github.com/christian-draeger/magic-infra/issues/52)
 uses the same Application Model to generate `magic-infra.nix` for a prebuilt
-OCI app on an existing NixOS host. The [PostgreSQL spike](https://github.com/christian-draeger/magic-infra/issues/49)
+OCI app on an existing NixOS host. The [PostgreSQL support](https://github.com/christian-draeger/magic-infra/issues/49)
 adds native PostgreSQL for explicitly managed resources and runtime bindings
 to external instances. It verifies CRUD and data retention after a
 configuration switch and reboot in a NixOS VM. Credentials are supplied at

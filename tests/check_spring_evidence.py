@@ -370,6 +370,14 @@ def check_compose_renderer():
 def check_nixos_renderer():
     fixture = ROOT / "examples/nixos-app"
     inputs = [fixture / "evidence.json", fixture / "infra.yaml"]
+    spring_evidence = ROOT / "examples/m0/evidence.json"
+    managed_declaration = ROOT / "examples/infra/managed.yaml"
+    evidence = read_json(spring_evidence)
+    conflicting = yaml.safe_load(managed_declaration.read_text())
+    conflicting["services"]["worker"] = {**conflicting["services"]["api"], "port": 8081}
+    conflicting["resources"]["secondary-db"] = dict(conflicting["resources"]["primary-db"])
+    conflicting["bindings"].append({"serviceId": "worker", "resourceId": "secondary-db"})
+    evidence["services"].append({**evidence["services"][0], "id": "worker", "module": ":worker"})
     for action, name in (("plan", "plan.json"), ("generate", "magic-infra.nix")):
         command = [READER, action, *inputs, "--target", "nixos"]
         output = success(invoke(command))
@@ -377,14 +385,32 @@ def check_nixos_renderer():
         assert output == success(invoke(command + ["dev"]))
         assert output == success(invoke([READER, action, *inputs, "dev", "--target", "nixos"]))
         rejected(invoke(command + ["--require-host-failover"]), 4, "MI_NIXOS_HOST_FAILOVER", "multiple hosts")
-        spring_evidence = ROOT / "examples/m0/evidence.json"
-        rejected(invoke([READER, action, spring_evidence, ROOT / "examples/infra/managed.yaml", "--target", "nixos"]),
-                 4, "MI_NIXOS_RESOURCE_UNSUPPORTED", "Select Compose for managed PostgreSQL")
         external = [READER, action, spring_evidence, ROOT / "examples/infra/external.yaml", "--target", "nixos"]
         assert success(invoke(external)) == (fixture / "expected" / f"external-{name}").read_bytes()
+        managed = [READER, action, spring_evidence, managed_declaration, "--target", "nixos"]
+        output = success(invoke(managed))
+        assert output == success(invoke(managed + ["dev"]))
+        rejected(invoke(managed + ["--require-host-failover"]), 4, "MI_NIXOS_HOST_FAILOVER", "multiple hosts")
+        with tempfile.TemporaryDirectory() as directory:
+            declaration = Path(directory) / "infra.yaml"
+            declaration.write_text(yaml.safe_dump(conflicting))
+            rejected(invoke([READER, action, "-", declaration, "--target", "nixos"], json_bytes(evidence)),
+                     4, "MI_NIXOS_DATABASE_CONFLICT", "Database shop")
+        if action == "plan":
+            plan = json.loads(output)
+            validate_schema(plan, "plan")
+            assert any(op["id"] == "create-primary-db" and "native PostgreSQL" in op["description"]
+                       for op in plan["operations"])
+            credential = next(item for item in plan["prerequisites"] if item["id"] == "credentials-primary-db")
+            assert credential["description"] == (
+                "Supply SPRING_DATASOURCE_PASSWORD in /run/secrets/magic-infra/shop_dev/shop-db-credentials.env at runtime."
+            )
+        else:
+            assert b"services.postgresql.enable = true;" in output
+            assert b"database.env:/run/secrets/magic-infra/shop_dev/shop-db-credentials.env" in output
     validate_schema(read_json(fixture / "expected/plan.json"), "plan")
     rejected(invoke([READER, "generate", *inputs, "--target", "kubernetes"]), 2, "MI_EVIDENCE_USAGE", "nixos")
-    print("NixOS plan, module repeatability, resource rejection and capability checks passed.")
+    print("NixOS plan, module repeatability, managed/external ownership and capability checks passed.")
 
 
 def check_config():

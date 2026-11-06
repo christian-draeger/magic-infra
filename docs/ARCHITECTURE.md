@@ -71,8 +71,8 @@ chosen credentials without embedding their values.
 The [NixOS target](NIXOS.md) renders an importable app module for a single
 host and describes its host and runtime prerequisites in the plan. The
 operator supplies the host configuration and owns activation. External
-PostgreSQL uses runtime env-file references. Managed PostgreSQL is the next
-NixOS slice.
+PostgreSQL uses runtime env-file references. Managed resources provision
+a scoped database and role in the host's native PostgreSQL service.
 
 Compilation can run without applying to a cluster or building an image.
 Identical inputs, versions and target settings should yield the same files.

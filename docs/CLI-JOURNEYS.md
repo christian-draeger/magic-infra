@@ -11,7 +11,7 @@ In the examples below, `evidence-check` refers to the launcher under
 | Explain | `evidence-check explain evidence.json` shows inferred bindings and conflicts with rule and finding IDs. |
 | Plan | `evidence-check plan evidence.json infra.yaml dev` emits a versioned Compose preview. The environment defaults to `dev`. |
 | Generate | `evidence-check generate evidence.json infra.yaml dev` emits the [Compose file](COMPOSE.md) to stdout. Redirect it to the output directory you want to review. |
-| Select NixOS | Add `--target nixos` to `plan` or `generate` for a prebuilt app with optional external PostgreSQL. The [NixOS module](NIXOS.md) imports into an existing host configuration. |
+| Select NixOS | Add `--target nixos` to `plan` or `generate` for a prebuilt app with optional managed or external PostgreSQL. The [NixOS module](NIXOS.md) imports into an existing host configuration. |
 
 `plan` reads only the two inputs. It outputs anticipated actions,
 prerequisites and the relative artifact path for the target. It does not
