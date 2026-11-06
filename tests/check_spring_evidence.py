@@ -377,10 +377,11 @@ def check_nixos_renderer():
         assert output == success(invoke(command + ["dev"]))
         assert output == success(invoke([READER, action, *inputs, "dev", "--target", "nixos"]))
         rejected(invoke(command + ["--require-host-failover"]), 4, "MI_NIXOS_HOST_FAILOVER", "multiple hosts")
-        for mode in ("managed", "external"):
-            rejected(invoke([READER, action, ROOT / "examples/m0/evidence.json",
-                             ROOT / f"examples/infra/{mode}.yaml", "--target", "nixos"]),
-                     4, "MI_NIXOS_RESOURCE_UNSUPPORTED", "Select Compose for PostgreSQL")
+        spring_evidence = ROOT / "examples/m0/evidence.json"
+        rejected(invoke([READER, action, spring_evidence, ROOT / "examples/infra/managed.yaml", "--target", "nixos"]),
+                 4, "MI_NIXOS_RESOURCE_UNSUPPORTED", "Select Compose for managed PostgreSQL")
+        external = [READER, action, spring_evidence, ROOT / "examples/infra/external.yaml", "--target", "nixos"]
+        assert success(invoke(external)) == (fixture / "expected" / f"external-{name}").read_bytes()
     validate_schema(read_json(fixture / "expected/plan.json"), "plan")
     rejected(invoke([READER, "generate", *inputs, "--target", "kubernetes"]), 2, "MI_EVIDENCE_USAGE", "nixos")
     print("NixOS plan, module repeatability, resource rejection and capability checks passed.")
