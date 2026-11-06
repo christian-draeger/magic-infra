@@ -42,6 +42,10 @@ Compose CLI and use credentials for the existing database.
 
 ## Verify the fixture
 
+From the repository root, use JDK 21, Gradle 8.5 and Python 3.12 or later.
+Select a local Docker context backed by a Unix socket, with BuildKit and
+Docker Compose 2.30 or later available.
+
 ```sh
 gradle :evidence-check:installDist
 python -m pip install -r tests/requirements.txt

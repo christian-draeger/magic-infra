@@ -139,6 +139,7 @@ def check_compose(docker, evidence, declaration, service, suffix):
             updated = "PostgreSQL kept this fixture's note"
             note_request(address, "PUT", 204, updated)
             assert note_request(address, "GET", 200) == updated
+            assert_password_absent(compose, password)
 
             command(*compose, "down")
             address = start_compose(compose, service)
