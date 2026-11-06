@@ -39,7 +39,7 @@ evidence-check generate examples/m0/evidence.json examples/infra/managed.yaml --
 ```
 
 Supply a private, root-readable file at the path named by the plan. For the
-example above it is `/run/secrets/magic-infra/shop_dev/shop-db-credentials.env`.
+example above it is `/run/secrets/magic-infra/shop_dev/managed/shop-db-credentials.env`.
 Use one non-empty `SPRING_DATASOURCE_PASSWORD=value` assignment, at most 8192
 bytes, with LF line endings. The module supplies the username and JDBC URL.
 Arrange for the secret provider to populate the file before the app starts,

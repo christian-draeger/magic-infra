@@ -90,9 +90,11 @@ internal object DeploymentPlanPreview {
                 val connection = resource.path("connection")
                 val secretRef = connection.path("secretRef").asText()
                 val credentials = if (target == DeploymentTarget.NIXOS) {
-                    val keys = if (resource.path("management").asText() == "managed") "SPRING_DATASOURCE_PASSWORD"
+                    val managedResource = resource.path("management").asText() == "managed"
+                    val keys = if (managedResource) "SPRING_DATASOURCE_PASSWORD"
                     else "SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD"
-                    "Supply $keys in ${nixosCredentialsPath(app, environment, secretRef)} at runtime."
+                    val path = nixosCredentialsPath(app, environment, secretRef, managed = managedResource)
+                    "Supply $keys in $path at runtime."
                 } else "Provide credentials reference $secretRef for resource $id."
                 add(prerequisite("credentials-$id", credentials))
                 if (connection.has("endpointRef")) {

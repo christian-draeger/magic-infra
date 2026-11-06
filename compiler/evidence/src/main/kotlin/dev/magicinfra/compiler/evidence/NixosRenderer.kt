@@ -2,8 +2,10 @@ package dev.magicinfra.compiler.evidence
 
 import com.fasterxml.jackson.databind.JsonNode
 
-internal fun nixosCredentialsPath(app: String, environment: String, secretRef: String): String =
-    "/run/secrets/magic-infra/${app}_$environment/$secretRef.env"
+internal fun nixosCredentialsPath(app: String, environment: String, secretRef: String, managed: Boolean = false): String {
+    val directory = if (managed) "managed/" else ""
+    return "/run/secrets/magic-infra/${app}_$environment/$directory$secretRef.env"
+}
 
 internal fun nixosEndpointPath(app: String, environment: String, endpointRef: String): String =
     "/run/secrets/magic-infra/${app}_$environment/endpoints/$endpointRef.env"

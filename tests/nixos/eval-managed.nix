@@ -23,6 +23,9 @@ let
   earlierRule = evaluate ({ lib, ... }: {
     services.postgresql.authentication = lib.mkOrder 300 "host all all 127.0.0.0/8 trust";
   });
+  continuedComment = evaluate ({ lib, ... }: {
+    services.postgresql.authentication = lib.mkOrder 430 "# continued comment\\";
+  });
   alternateFile = evaluate ({ lib, ... }: {
     services.postgresql.settings.hba_file = lib.mkForce "/etc/host-pg_hba.conf";
   });
@@ -35,6 +38,7 @@ in
 assert compatible.services.postgresql.enable;
 assert !rejects compatible authMessage;
 assert rejects earlierRule authMessage;
+assert rejects continuedComment authMessage;
 assert rejects alternateFile authMessage;
 assert rejects rootless "magic-infra managed PostgreSQL requires rootful Podman for ${name}.";
 assert rejects portConflict "magic-infra app ports must differ from the native PostgreSQL port.";

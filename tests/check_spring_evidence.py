@@ -378,6 +378,10 @@ def check_nixos_renderer():
     conflicting["resources"]["secondary-db"] = dict(conflicting["resources"]["primary-db"])
     conflicting["bindings"].append({"serviceId": "worker", "resourceId": "secondary-db"})
     evidence["services"].append({**evidence["services"][0], "id": "worker", "module": ":worker"})
+    mixed = copy.deepcopy(conflicting)
+    external_resource = mixed["resources"]["secondary-db"]
+    external_resource.update(management="external", endpointRef="WORKER_DB_URL")
+    del external_resource["storageSize"]
     for action, name in (("plan", "plan.json"), ("generate", "magic-infra.nix")):
         command = [READER, action, *inputs, "--target", "nixos"]
         output = success(invoke(command))
@@ -396,6 +400,10 @@ def check_nixos_renderer():
             declaration.write_text(yaml.safe_dump(conflicting))
             rejected(invoke([READER, action, "-", declaration, "--target", "nixos"], json_bytes(evidence)),
                      4, "MI_NIXOS_DATABASE_CONFLICT", "Database shop")
+            declaration.write_text(yaml.safe_dump(mixed))
+            mixed_output = success(invoke([READER, action, "-", declaration, "--target", "nixos"], json_bytes(evidence)))
+            assert b"/run/secrets/magic-infra/shop_dev/managed/shop-db-credentials.env" in mixed_output
+            assert b"/run/secrets/magic-infra/shop_dev/shop-db-credentials.env" in mixed_output
         if action == "plan":
             plan = json.loads(output)
             validate_schema(plan, "plan")
@@ -403,11 +411,11 @@ def check_nixos_renderer():
                        for op in plan["operations"])
             credential = next(item for item in plan["prerequisites"] if item["id"] == "credentials-primary-db")
             assert credential["description"] == (
-                "Supply SPRING_DATASOURCE_PASSWORD in /run/secrets/magic-infra/shop_dev/shop-db-credentials.env at runtime."
+                "Supply SPRING_DATASOURCE_PASSWORD in /run/secrets/magic-infra/shop_dev/managed/shop-db-credentials.env at runtime."
             )
         else:
             assert b"services.postgresql.enable = true;" in output
-            assert b"database.env:/run/secrets/magic-infra/shop_dev/shop-db-credentials.env" in output
+            assert b"database.env:/run/secrets/magic-infra/shop_dev/managed/shop-db-credentials.env" in output
     validate_schema(read_json(fixture / "expected/plan.json"), "plan")
     rejected(invoke([READER, "generate", *inputs, "--target", "kubernetes"]), 2, "MI_EVIDENCE_USAGE", "nixos")
     print("NixOS plan, module repeatability, managed/external ownership and capability checks passed.")

@@ -2,7 +2,7 @@
 let
   pkgs = import nixpkgs { };
   containerName = "magic-infra-compose-app_dev_compose-app";
-  credentials = "/run/secrets/magic-infra/compose-app_dev/fixture-db.env";
+  credentials = "/run/secrets/magic-infra/compose-app_dev/managed/fixture-db.env";
   identity = builtins.substring 0 32 (builtins.hashString "sha256" "compose-app_dev_primary-db");
   role = "mi_${identity}";
   provision = "magic-infra-${identity}-postgresql.service";
@@ -23,6 +23,7 @@ pkgs.testers.runNixOSTest {
       port = 5433;
       log_checkpoints = true;
     };
+    services.postgresql.authentication = lib.mkBefore "host replication postgres 127.0.0.0/8 scram-sha-256";
     specialisation.switched.configuration = {
       environment.etc."magic-infra-generation".text = lib.mkForce "switched";
       services.postgresql.settings.log_checkpoints = lib.mkForce false;
@@ -48,7 +49,7 @@ pkgs.testers.runNixOSTest {
     psql = "runuser -u postgres -- psql -p 5433 -XqAt -v ON_ERROR_STOP=1 -d postgres"
 
     def upload_credentials(path):
-        app.succeed("install -d -m 0700 /run/secrets/magic-infra/compose-app_dev")
+        app.succeed("install -d -m 0700 /run/secrets/magic-infra/compose-app_dev/managed")
         app.copy_from_host(str(path), "${credentials}")
         app.succeed("chmod 0600 ${credentials}")
 
@@ -85,7 +86,7 @@ pkgs.testers.runNixOSTest {
         app.succeed("journalctl -u ${provision} --no-pager | grep -F 'database fixture already has another owner'")
         assert app.succeed(f"{psql} -c \"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'fixture'\"").strip() == "postgres"
         app.succeed(f'{psql} -c "DROP DATABASE fixture"')
-        app.succeed(f"systemctl reset-failed {service} ${provision}")
+        app.succeed("systemctl reset-failed ${provision}")
 
         start_workload()
         assert app.succeed(f"{psql} -c \"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'fixture'\"").strip() == "${role}"
@@ -97,6 +98,10 @@ pkgs.testers.runNixOSTest {
         app.succeed(f'{client} -h {gateway} -p 15432 -d fixture -c "SELECT 1"')
         app.succeed(f'{client} -h {gateway} -p 15432 -d postgres -c "SELECT 1" 2>&1 | grep -F "pg_hba.conf rejects connection"')
         app.succeed(f'{client} -h 127.0.0.1 -p 5433 -d fixture -c "SELECT 1" 2>&1 | grep -F "pg_hba.conf rejects connection"')
+        app.succeed(
+            f'psql -Xqw "host={gateway} port=15432 user=postgres replication=true" '
+            '-c IDENTIFY_SYSTEM 2>&1 | grep -F "pg_hba.conf rejects replication connection"'
+        )
         app.succeed("ss -H -ltn 'sport = :5433' | grep -F '127.0.0.1:5433'")
 
         app.succeed(f"curl -fsS -X POST -H 'Content-Type: text/plain' --data-binary 'first note' {note}")

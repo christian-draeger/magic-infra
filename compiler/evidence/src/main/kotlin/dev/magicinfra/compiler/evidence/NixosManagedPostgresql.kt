@@ -6,7 +6,9 @@ import java.util.HexFormat
 
 internal class NixosManagedPostgresql(app: String, environment: String, id: String, resource: JsonNode) {
     private val database = resource.path("settings").path("database").asText()
-    private val source = nixosCredentialsPath(app, environment, resource.path("connection").path("secretRef").asText())
+    private val source = nixosCredentialsPath(
+        app, environment, resource.path("connection").path("secretRef").asText(), managed = true,
+    )
     private val identity = HexFormat.of().formatHex(
         MessageDigest.getInstance("SHA-256").digest("${app}_${environment}_$id".toByteArray()),
     ).take(32)
@@ -160,7 +162,7 @@ ${sql.prependIndent("              ")}
     companion object {
         private const val proxySource = "127.77.0.1"
         private const val proxyPort = 15432
-        private const val denyProxy = "host all all $proxySource/32 reject"
+        private const val denyProxy = "host all,replication all $proxySource/32 reject"
 
         // PostgreSQL uses the first matching rule. Allow different generated modules to share
         // the leading rule groups while rejecting arbitrary rules before those groups.
@@ -168,8 +170,10 @@ ${sql.prependIndent("              ")}
             authentication = config.services.postgresql.authentication;
             authenticationFileMatches = (config.services.postgresql.settings.hba_file or "") ==
               toString (pkgs.writeText "pg_hba.conf" authentication);
+            # PostgreSQL joins continued lines before discarding comments.
+            logicalRules = builtins.replaceStrings [ "\\\r\n" "\\\n" ] [ "" "" ] authentication;
             activeRules = lib.filter (line: line != "" && !lib.hasPrefix "#" line)
-              (map lib.trim (lib.splitString "\n" authentication));
+              (map lib.trim (lib.splitString "\n" logicalRules));
             takeWhile = predicate: lines:
               lib.take (lib.lists.findFirstIndex (line: !predicate line) (lib.length lines) lines) lines;
             managedAllows = takeWhile (line:
