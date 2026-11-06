@@ -64,6 +64,10 @@ pkgs.testers.runNixOSTest {
         assert status == 0, "Could not read service logs"
         assert password not in logs, "Fixture password appeared in the journal"
 
+    def rejected_connection(command, expected):
+        status, error = app.execute(f"{command} 2>&1")
+        assert status != 0 and expected in error, f"Expected PostgreSQL to report {expected}"
+
     app.start()
     app.wait_for_unit("postgresql.target")
     app.wait_for_unit("multi-user.target")
@@ -96,11 +100,11 @@ pkgs.testers.runNixOSTest {
         gateway = app.succeed("sed -n 's|.*://\\([^:]*\\):.*|\\1|p' /run/${proxy}/endpoint.env").strip()
         client = "PGPASSWORD=$(cut -d= -f2- ${credentials}) psql -Xqw -U ${role}"
         app.succeed(f'{client} -h {gateway} -p 15432 -d fixture -c "SELECT 1"')
-        app.succeed(f'{client} -h {gateway} -p 15432 -d postgres -c "SELECT 1" 2>&1 | grep -F "pg_hba.conf rejects connection"')
-        app.succeed(f'{client} -h 127.0.0.1 -p 5433 -d fixture -c "SELECT 1" 2>&1 | grep -F "pg_hba.conf rejects connection"')
-        app.succeed(
-            f'psql -Xqw "host={gateway} port=15432 user=postgres replication=true" '
-            '-c IDENTIFY_SYSTEM 2>&1 | grep -F "pg_hba.conf rejects replication connection"'
+        rejected_connection(f'{client} -h {gateway} -p 15432 -d postgres -c "SELECT 1"', "pg_hba.conf rejects connection")
+        rejected_connection(f'{client} -h 127.0.0.1 -p 5433 -d fixture -c "SELECT 1"', "pg_hba.conf rejects connection")
+        rejected_connection(
+            f'psql -Xqw "host={gateway} port=15432 user=postgres replication=true" -c IDENTIFY_SYSTEM',
+            "pg_hba.conf rejects replication connection",
         )
         app.succeed("ss -H -ltn 'sport = :5433' | grep -F '127.0.0.1:5433'")
 
