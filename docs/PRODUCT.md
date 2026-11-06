@@ -16,7 +16,7 @@ model:
   the app and its dependencies, without hand-writing the Compose file.
 - **Compose on a VPS:** Ship that app to your own server with reviewable
   services, volumes and secret references. For a NixOS server, see the
-  [planned NixOS target](#nixos-on-your-vps).
+  [NixOS app module](#nixos-on-your-vps).
 - **An existing Kubernetes cluster (planned):** Add a service, bind infrastructure
   you already operate, and review changes to manifests as the app evolves.
 

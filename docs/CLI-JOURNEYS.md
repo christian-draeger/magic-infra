@@ -14,10 +14,10 @@ In the examples below, `evidence-check` refers to the launcher under
 | Select NixOS | Add `--target nixos` to `plan` or `generate` for a prebuilt app without resource bindings. The [NixOS module](NIXOS.md) imports into an existing host configuration. |
 
 `plan` reads only the two inputs. It outputs anticipated actions,
-prerequisites and relative artifact paths, including `compose.yaml`. It
-does not inspect deployed state. An external database yields a reference
-action and a managed database yields a create action in the preview.
-Binding actions name their destination resource. Prerequisites name image,
+prerequisites and the relative artifact path for the target. It does not
+inspect deployed state. In a Compose plan, an external database yields a
+reference action and a managed database yields a create action. Binding
+actions name their destination resource. Prerequisites name image,
 credential and endpoint references. Actual deployment runs separately after
 the files have been reviewed.
 
