@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#080b11" />
-  <meta name="description" content="Generate reviewable infrastructure from your existing app code. An open adapter model connects different frameworks to Docker Compose and Kubernetes." />
+  <meta name="description" content="Generate reviewable infrastructure from your existing app code. An open adapter model connects frameworks to Docker Compose, with Kubernetes and NixOS targets planned." />
   <meta property="og:title" content="magic-infra — Your app knows what it needs. Your infra should too." />
   <meta property="og:description" content="Open framework adapters turn the needs of your existing app into infrastructure you can inspect, deploy and own. Product preview." />
   <meta property="og:type" content="website" />
@@ -12,7 +12,7 @@
   <link rel="canonical" href="https://christian-draeger.github.io/magic-infra/" />
   <title>magic-infra — Your app knows what it needs. Your infra should too.</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=star" />
-  <link rel="stylesheet" href="assets/styles.css?v=compiler-ir" />
+  <link rel="stylesheet" href="assets/styles.css?v=nixos-vps" />
   <script defer src="assets/app.js"></script>
 </head>
 <body id="top">
@@ -35,9 +35,9 @@
         <div class="eyebrow"><span class="status-dot"></span> CODE FIRST <span class="eyebrow-divider"></span> OPEN BY DESIGN <span class="eyebrow-line"></span></div>
         <h1 id="hero-title">Your app knows<br/>what it needs.<br/><span class="h1-accent">Your infra<br/>should too<span class="period">.</span></span></h1>
         <p class="hero-lede">Your app code describes what it needs and how its services connect. <strong>magic-infra</strong> uses <a href="#architecture">open framework adapters</a> to turn those signals into infrastructure files you can review, run, and own.</p>
-        <p class="hero-targets">Docker Compose locally or on a VPS. Kubernetes in your own cluster.</p>
+        <p class="hero-targets">Docker Compose locally or on a VPS. Kubernetes in your own cluster and <a href="#nixos">NixOS on your VPS</a> are planned.</p>
         <div class="hero-actions"><a class="button button-primary" href="#experience">See the magic <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="currentColor"><path d="M12 .9A11.1 11.1 0 0 0 8.5 22.5c.55.1.76-.24.76-.53v-2.1c-3.1.67-3.75-1.3-3.75-1.3-.5-1.25-1.24-1.58-1.24-1.58-1-.7.08-.68.08-.68 1.12.08 1.7 1.15 1.7 1.15 1 .1 1.69-.68 1.9-.97.1-.73.39-1.22.7-1.5-2.47-.29-5.07-1.24-5.07-5.49 0-1.21.43-2.2 1.14-2.97-.11-.28-.5-1.4.11-2.92 0 0 .94-.3 3.05 1.14a10.62 10.62 0 0 1 5.55 0c2.12-1.44 3.05-1.14 3.05-1.14.61 1.52.22 2.64.1 2.92.72.77 1.15 1.76 1.15 2.97 0 4.26-2.61 5.19-5.1 5.48.4.35.75 1.02.75 2.06v3.05c0 .3.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg> Follow the build</a></div>
-        <p class="hero-note"><span class="tiny-spark">✳</span> Product preview <span class="line-dot">·</span> Compiler in planning</p>
+        <p class="hero-note"><span class="tiny-spark">✳</span> Product preview <span class="line-dot">·</span> Compose slice verified</p>
       </div>
       <div class="hero-showcase reveal" style="--delay: .16s">
         <div class="orb orb-main" aria-hidden="true"><div class="orb-ring ring-one"></div><div class="orb-ring ring-two"></div><div class="orb-inner">⌘</div><span class="orb-star star-one">✦</span><span class="orb-star star-two">✳</span></div>
@@ -67,9 +67,9 @@
             <p>Bring up your app and its dependencies with Compose. Give teammates the same setup without hand-writing a stack for each project.</p>
           </article>
           <article class="run-path">
-            <p class="run-path-label"><span aria-hidden="true">02 /</span> VPS · DOCKER COMPOSE</p>
+            <p class="run-path-label"><span aria-hidden="true">02 /</span> VPS · COMPOSE / NIXOS</p>
             <h3>Ship to a server you own.</h3>
-            <p>Take reviewed Compose files to your VPS. Keep your volumes, secrets and deployment workflow under your control.</p>
+            <p>Take reviewed Compose files to your VPS. The planned <a href="#nixos">NixOS target</a> will let you import the app into your host configuration.</p>
           </article>
           <article class="run-path">
             <p class="run-path-label"><span aria-hidden="true">03 /</span> CLUSTER · KUBERNETES</p>
@@ -77,6 +77,22 @@
             <p>Add a service to your own cluster or reuse an existing database. When the app changes, regenerate the manifests and review the diff in Git.</p>
           </article>
         </div>
+        <aside class="nixos-target" id="nixos" aria-labelledby="nixos-title">
+          <div class="nixos-copy">
+            <p class="run-path-label">PLANNED TARGET · NIXOS</p>
+            <h3 id="nixos-title">Your app, part of your server config.</h3>
+            <p>NixOS lets you describe a server and its services together. Review changes in Git, rebuild the same setup from pinned inputs, and roll back to an earlier system configuration when needed.</p>
+            <p>magic-infra will generate a module you can import into an existing NixOS host. Start with your app image on Podman and native PostgreSQL when you choose to manage it locally. The longer-term goal is to run a versioned app package directly under systemd.</p>
+            <a class="nixos-link" href="https://github.com/christian-draeger/magic-infra/issues/49">Follow the NixOS spike <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="nixos-module">
+            <p>YOUR HOST REPO <span>configuration.nix</span></p>
+            <pre><code>{
+  imports = [ <span>./magic-infra.nix</span> ];
+}</code></pre>
+            <p>You review and activate the module. Database backups and migrations follow their own recovery workflow.</p>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -109,15 +125,15 @@ spring:
     </section>
 
     <section class="section architecture container" id="architecture" aria-labelledby="architecture-title">
-      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>OPEN FRAMEWORK ADAPTERS</span></p><h2 id="architecture-title">Many frameworks.<br/><em>One compiler.</em></h2><p>Framework adapters report evidence. The core resolves it into a portable application model, the compiler’s intermediate representation (IR). From there, the selected backend helps plan and generate files for Compose or Kubernetes.</p></div>
-      <div class="architecture-visual reveal" aria-label="Architecture diagram: adapters send Evidence to the core. The core resolves an Application IR and plans with the selected backend. The renderer turns the plan into Compose or Kubernetes files.">
+      <div class="section-intro reveal"><p class="overline"><span>02 / UNDER THE HOOD</span><span>OPEN FRAMEWORK ADAPTERS</span></p><h2 id="architecture-title">Many frameworks.<br/><em>One compiler.</em></h2><p>Framework adapters report evidence. The core resolves it into a portable application model, the compiler’s intermediate representation (IR). The selected backend uses it to plan and generate files for the environment you choose.</p></div>
+      <div class="architecture-visual reveal" aria-label="Architecture diagram. Adapters send Evidence to the core. The core resolves an Application IR and plans with the selected backend. The renderer turns the plan into standard files.">
         <div class="architecture-topline"><span>ARCHITECTURE / SYSTEM VIEW</span><span><span class="live-indicator"></span> DESIGNED FOR EXTENSIBILITY</span></div>
         <div class="arch-flow">
-          <div class="arch-box arch-input"><div class="arch-ico">&lt;/&gt;</div><div class="arch-type">FRAMEWORK ADAPTERS</div><h3>Understand<br/>the application.</h3><div class="arch-chips"><span>Spring Boot <small>first planned</small></span><span>Next.js <small>planned pilot</small></span><span>+ community adapters</span></div></div>
+          <div class="arch-box arch-input"><div class="arch-ico">&lt;/&gt;</div><div class="arch-type">FRAMEWORK ADAPTERS</div><h3>Understand<br/>the application.</h3><div class="arch-chips"><span>Spring Boot <small>verified</small></span><span>Next.js <small>planned pilot</small></span><span>+ community adapters</span></div></div>
           <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Evidence</small></div>
           <div class="arch-box arch-core"><div class="core-glimmer" aria-hidden="true"></div><div class="arch-ico core-ico">✳</div><div class="arch-type">MAGIC-INFRA CORE</div><h3>Resolve.<br/>Validate. Plan.</h3><p>Evidence + explicit intent → Application IR → Deployment Plan.</p><div class="core-label">PORTABLE BY DESIGN</div></div>
           <div class="arch-connector" aria-hidden="true"><div class="connector-track"><span class="travel-dot"></span></div><small>Deployment Plan</small></div>
-          <div class="arch-box arch-output"><div class="arch-ico">↳</div><div class="arch-type">INFRA BACKENDS</div><h3>Generate<br/>what you own.</h3><div class="arch-chips"><span>Docker Compose</span><span>Kubernetes / K3s</span><span>+ future backends</span></div></div>
+          <div class="arch-box arch-output"><div class="arch-ico">↳</div><div class="arch-type">INFRA BACKENDS</div><h3>Generate<br/>what you own.</h3><div class="arch-chips"><span>Docker Compose</span><span>Kubernetes / K3s <small>planned</small></span><span>NixOS <small>planned</small></span><span>+ future backends</span></div></div>
         </div>
         <div class="arch-bottomline"><span>01 / Observe, don't guess</span><span>02 / No hidden infrastructure</span><span>03 / Standard artifacts</span></div>
       </div>
@@ -152,7 +168,8 @@ spring:
               <p>The renderer uses the plan to write standard files. The same inputs produce the same output, with references to secrets instead of secret values. Building an image and applying changes are separate steps you control.</p>
               <dl class="compiler-outputs">
                 <div><dt>Compose</dt><dd>PostgreSQL service + named volume</dd></div>
-                <div><dt>Kubernetes</dt><dd>CloudNativePG Cluster + operator-managed storage</dd></div>
+                <div><dt>Kubernetes · planned</dt><dd>CloudNativePG Cluster + operator-managed storage</dd></div>
+                <div><dt>NixOS · planned</dt><dd>Importable module + native PostgreSQL service</dd></div>
               </dl>
             </li>
           </ol>
@@ -162,15 +179,15 @@ spring:
       <div class="arch-notes"><div class="arch-note reveal"><span class="note-symbol">◇</span><h3>Evidence, not assumptions.</h3><p>The adapter reports what it saw—and what it couldn't know. Dependencies aren't permission to provision.</p></div><div class="arch-note reveal" style="--delay:.08s"><span class="note-symbol">◎</span><h3>Intent, not YAML soup.</h3><p>A shared application model describes resources, bindings, ownership and lifecycles—not Kubernetes internals.</p></div><div class="arch-note reveal" style="--delay:.16s"><span class="note-symbol">↗</span><h3>Portable, not identical.</h3><p>Each backend checks its capabilities. A single VPS doesn't suddenly become highly available.</p></div></div>
     </section>
 
-    <section class="section ownership-section" aria-labelledby="ownership-title"><div class="container ownership-grid"><div class="ownership-copy reveal"><p class="overline"><span>03 / OWN THE OUTPUT</span></p><h2 id="ownership-title">Generate it once.<br/><em>Own it for good.</em></h2><p>Review the files in Git, deploy them through your existing workflow, and keep operating them without a magic-infra runtime. You still own backups, updates and availability.</p><div class="ownership-list"><div><span class="own-icon">↳</span><span>Generated, readable Compose and Kubernetes artifacts</span></div><div><span class="own-icon">↳</span><span>Git-friendly diff and review workflow</span></div><div><span class="own-icon">↳</span><span>Explicit resource ownership and retention</span></div><div><span class="own-icon">↳</span><span>A documented handover for stateful resources</span></div></div><p class="ownership-caveat">* Safe ownership transfer and lifecycle workflows are roadmap features, not released functionality.</p></div><div class="ownership-art reveal" style="--delay:.12s" aria-hidden="true"><div class="art-grid"></div><div class="art-ring r1"></div><div class="art-ring r2"></div><div class="art-ring r3"></div><div class="art-center"><span>✳</span><strong>YOUR<br/>INFRA</strong></div><div class="art-pill pill-1">compose.yaml <span>✓</span></div><div class="art-pill pill-2">k8s/ <span>✓</span></div><div class="art-pill pill-3">git diff <span>✓</span></div><div class="art-coordinate">OWNERSHIP: 100% YOU</div></div></div></section>
+    <section class="section ownership-section" aria-labelledby="ownership-title"><div class="container ownership-grid"><div class="ownership-copy reveal"><p class="overline"><span>03 / OWN THE OUTPUT</span></p><h2 id="ownership-title">Generate it once.<br/><em>Own it for good.</em></h2><p>Review the files in Git, deploy them through your existing workflow, and keep operating them without a magic-infra runtime. You still own backups, updates and availability.</p><div class="ownership-list"><div><span class="own-icon">↳</span><span>Readable deployment files you can run and own</span></div><div><span class="own-icon">↳</span><span>Git-friendly diff and review workflow</span></div><div><span class="own-icon">↳</span><span>Explicit resource ownership and retention</span></div><div><span class="own-icon">↳</span><span>A documented handover for stateful resources</span></div></div><p class="ownership-caveat">* Safe ownership transfer and lifecycle workflows are roadmap features, not released functionality.</p></div><div class="ownership-art reveal" style="--delay:.12s" aria-hidden="true"><div class="art-grid"></div><div class="art-ring r1"></div><div class="art-ring r2"></div><div class="art-ring r3"></div><div class="art-center"><span>✳</span><strong>YOUR<br/>INFRA</strong></div><div class="art-pill pill-1">compose.yaml <span>✓</span></div><div class="art-pill pill-2">infra.yaml <span>✓</span></div><div class="art-pill pill-3">git diff <span>✓</span></div><div class="art-coordinate">OWNERSHIP: 100% YOU</div></div></div></section>
 
-    <section class="section support container" id="support" aria-labelledby="support-title"><div class="section-intro reveal"><p class="overline"><span>04 / THE STACK</span><span>OPINIONATED ON PURPOSE</span></p><h2 id="support-title">Start focused.<br/><em>Grow without rewrites.</em></h2><p>The first planned path is Spring Boot, PostgreSQL and Compose. Then prove Kubernetes portability and use a second framework adapter to test that others can extend the system.</p></div>
+    <section class="section support container" id="support" aria-labelledby="support-title"><div class="section-intro reveal"><p class="overline"><span>04 / THE STACK</span><span>OPINIONATED ON PURPOSE</span></p><h2 id="support-title">Start focused.<br/><em>Grow without rewrites.</em></h2><p>The first verified path is Spring Boot, PostgreSQL and Compose. Kubernetes and NixOS are planned targets. A second framework adapter will test how others can extend the system.</p></div>
       <div class="support-grid">
-        <article class="support-card primary reveal"><div class="support-card-top"><div class="support-icon spring-icon">S</div><span class="support-status">FIRST ADAPTER · PLANNED</span></div><h3>Spring Boot</h3><p>Java and Kotlin application awareness: dependencies, supported config, annotations and explicit intent.</p><div class="support-card-foot">JAVA + KOTLIN <span>↗</span></div></article>
-        <article class="support-card reveal" style="--delay:.05s"><div class="support-card-top"><div class="support-icon pg-icon">P</div><span class="support-status">FIRST RESOURCE · PLANNED</span></div><h3>PostgreSQL</h3><p>Managed or external, with traceable bindings and retention-first lifecycle policies.</p><div class="support-card-foot">PERSISTENT DATA <span>↗</span></div></article>
-        <article class="support-card reveal" style="--delay:.10s"><div class="support-card-top"><div class="support-icon docker-icon">▣</div><span class="support-status">FIRST TARGET · PLANNED</span></div><h3>Docker Compose</h3><p>Self-host on one Linux box. Standard services, volumes and readable configuration.</p><div class="support-card-foot">VPS FRIENDLY <span>↗</span></div></article>
+        <article class="support-card primary reveal"><div class="support-card-top"><div class="support-icon spring-icon">S</div><span class="support-status">FIRST ADAPTER · VERIFIED</span></div><h3>Spring Boot</h3><p>Gradle dependencies, supported config and JVM metadata from Java and Kotlin apps.</p><div class="support-card-foot">JAVA + KOTLIN <span>↗</span></div></article>
+        <article class="support-card reveal" style="--delay:.05s"><div class="support-card-top"><div class="support-icon pg-icon">P</div><span class="support-status">VERIFIED ON COMPOSE</span></div><h3>PostgreSQL</h3><p>Explicit managed or external bindings. A named volume keeps managed data across container replacement.</p><div class="support-card-foot">PERSISTENT DATA <span>↗</span></div></article>
+        <article class="support-card reveal" style="--delay:.10s"><div class="support-card-top"><div class="support-icon docker-icon">▣</div><span class="support-status">FIRST TARGET · VERIFIED</span></div><h3>Docker Compose</h3><p>Self-host on one Linux box. Standard services, volumes and readable configuration.</p><div class="support-card-foot">VPS FRIENDLY <span>↗</span></div></article>
         <article class="support-card reveal" style="--delay:.15s"><div class="support-card-top"><div class="support-icon k8-icon">✺</div><span class="support-status">SECOND TARGET · PLANNED</span></div><h3>Kubernetes / K3s</h3><p>The same application intent, with Kubernetes-native workloads and CloudNativePG.</p><div class="support-card-foot">CLOUD NEUTRAL <span>↗</span></div></article>
-        <article class="support-card reveal" style="--delay:.2s"><div class="support-card-top"><div class="support-icon msg-icon">⇄</div><span class="support-status">EXPANSION · PLANNED</span></div><h3>RabbitMQ + Valkey</h3><p>Messaging and caching on both backends, with explicit topology and durability semantics.</p><div class="support-card-foot">EVENTS + CACHE <span>↗</span></div></article>
+        <article class="support-card reveal" style="--delay:.2s"><div class="support-card-top"><div class="support-icon msg-icon">⇄</div><span class="support-status">EXPANSION · PLANNED</span></div><h3>RabbitMQ + Valkey</h3><p>Messaging and caching on Compose and Kubernetes, with explicit topology and durability semantics.</p><div class="support-card-foot">EVENTS + CACHE <span>↗</span></div></article>
         <article class="support-card future reveal" style="--delay:.25s"><div class="support-card-top"><div class="support-icon next-icon">N</div><span class="support-status">EXTENSION PILOT</span></div><h3>Next.js & beyond</h3><p>A planned Next.js pilot will test the public adapter format with a framework outside the JVM.</p><div class="support-card-foot">PLUGIN-READY VISION <span>↗</span></div></article>
       </div><div class="future-note reveal"><span>✳</span><div><strong>What could plug in next?</strong><p>A Django or Express adapter could describe what its app needs in the same format. The design also leaves room for new resources and deployment targets, such as S3-compatible storage or Nomad. These are examples, not commitments.</p></div></div>
     </section>
@@ -260,25 +277,26 @@ spring:
         </section>
       </div>
       <div class="comparison-footer">
-        <p>These are design comparisons and integration ideas. The magic-infra compiler is in planning.</p>
+        <p>These comparisons describe where the tools fit. The Compose slice is verified, and the integration ideas are candidates for future testing.</p>
         <a href="https://github.com/christian-draeger/magic-infra/blob/main/docs/PRODUCT.md">Read the product vision <span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
-    <section class="section roadmap-section" id="roadmap" aria-labelledby="roadmap-title"><div class="container"><div class="section-intro reveal"><p class="overline"><span>06 / THE BUILD PLAN</span><span>REAL MILESTONES. REAL PROOF.</span></p><h2 id="roadmap-title">Less hand-waving.<br/><em>More shipping.</em></h2><p>Seven milestones, each with a testable outcome. The first real win is a running Spring Boot app and PostgreSQL on Docker Compose. Then we prove Kubernetes portability.</p></div>
+    <section class="section roadmap-section" id="roadmap" aria-labelledby="roadmap-title"><div class="container"><div class="section-intro reveal"><p class="overline"><span>06 / THE BUILD PLAN</span><span>REAL MILESTONES. REAL PROOF.</span></p><h2 id="roadmap-title">Less hand-waving.<br/><em>More shipping.</em></h2><p>The first end-to-end path runs Spring Boot and PostgreSQL on Docker Compose. Next comes Kubernetes portability, followed by a NixOS spike for a single VPS.</p></div>
         <div class="roadmap-list">
-          <div class="roadmap-item reveal"><div class="roadmap-node"><span>00</span></div><div class="roadmap-main"><span class="roadmap-micro">M0 / FOUNDATION</span><h3>The foundations</h3><p>Lock the contracts and test fixtures. Compare Kotlin/JVM and Go on the same compiler slice before choosing the implementation.</p></div><span class="roadmap-badge active-badge">PLANNING</span></div>
-          <div class="roadmap-item reveal"><div class="roadmap-node"><span>01</span></div><div class="roadmap-main"><span class="roadmap-micro">M1 / INTELLIGENCE</span><h3>Understand Spring</h3><p>Explainable signals from Gradle, Spring configuration and JVM metadata.</p></div><span class="roadmap-badge">PLANNED</span></div>
-          <div class="roadmap-item reveal"><div class="roadmap-node"><span>02</span></div><div class="roadmap-main"><span class="roadmap-micro">M2 / FIRST MAGIC</span><h3>Spring + Postgres + Compose</h3><p>One end-to-end running application, explicit intent and deterministic files.</p></div><span class="roadmap-badge">PLANNED</span></div>
-          <div class="roadmap-item reveal"><div class="roadmap-node"><span>03</span></div><div class="roadmap-main"><span class="roadmap-micro">M3 / PORTABILITY</span><h3>Same model. K3s target.</h3><p>Deploy the same intent on Kubernetes with CloudNativePG and capability checks.</p></div><span class="roadmap-badge">PLANNED</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>00</span></div><div class="roadmap-main"><span class="roadmap-micro">M0 / FOUNDATION</span><h3>The foundations</h3><p>Versioned contracts, test fixtures and a Kotlin/JVM compiler chosen after a comparison with Go.</p></div><span class="roadmap-badge">COMPLETE</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>01</span></div><div class="roadmap-main"><span class="roadmap-micro">M1 / INTELLIGENCE</span><h3>Understand Spring</h3><p>Explainable signals from Gradle, Spring configuration and JVM metadata.</p></div><span class="roadmap-badge">COMPLETE</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>02</span></div><div class="roadmap-main"><span class="roadmap-micro">M2 / FIRST MAGIC</span><h3>Spring + Postgres + Compose</h3><p>Generated Compose runs a real app with PostgreSQL and preserves data across container replacement.</p></div><span class="roadmap-badge">COMPLETE</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>03</span></div><div class="roadmap-main"><span class="roadmap-micro">M3 / PORTABILITY</span><h3>Same model. K3s target.</h3><p>Deploy the same intent on Kubernetes with CloudNativePG and capability checks.</p></div><span class="roadmap-badge active-badge">NEXT</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>NIX</span></div><div class="roadmap-main"><span class="roadmap-micro">AFTER M3 / VPS</span><h3>NixOS on your VPS</h3><p>Generate a module for an existing host and verify PostgreSQL persistence in a NixOS VM.</p></div><span class="roadmap-badge">PLANNED</span></div>
           <div class="roadmap-item reveal"><div class="roadmap-node"><span>04</span></div><div class="roadmap-main"><span class="roadmap-micro">M4 / OPERATIONS</span><h3>Safe ownership & handover</h3><p>Plan diffs, secrets, retention, overrides, GitOps and manual takeover.</p></div><span class="roadmap-badge">PLANNED</span></div>
-          <div class="roadmap-item reveal"><div class="roadmap-node"><span>05</span></div><div class="roadmap-main"><span class="roadmap-micro">M5 / EXPANSION</span><h3>Messaging and caching</h3><p>RabbitMQ, Valkey and mixed-resource dependency graphs on both targets.</p></div><span class="roadmap-badge">PLANNED</span></div>
+          <div class="roadmap-item reveal"><div class="roadmap-node"><span>05</span></div><div class="roadmap-main"><span class="roadmap-micro">M5 / EXPANSION</span><h3>Messaging and caching</h3><p>RabbitMQ, Valkey and mixed-resource dependency graphs on Compose and Kubernetes.</p></div><span class="roadmap-badge">PLANNED</span></div>
           <div class="roadmap-item reveal"><div class="roadmap-node"><span>06</span></div><div class="roadmap-main"><span class="roadmap-micro">M6 / EXTENSIBILITY</span><h3>Adapters & beta</h3><p>Independent Next.js proof, documented SDK, packaging and public beta readiness.</p></div><span class="roadmap-badge">PLANNED</span></div>
         </div><div class="roadmap-footer reveal"><span>Milestones are exit criteria, with no fixed dates.</span><a href="https://github.com/christian-draeger/magic-infra/blob/main/docs/ROADMAP.md">Read the engineering roadmap ↗</a></div>
       </div></section>
 
     <section class="section endgame container"><div class="end-card reveal"><div class="end-ambient" aria-hidden="true"></div><div class="end-icon" aria-hidden="true">✳</div><p class="end-overline">THE FUTURE IS NOT ANOTHER CONTROL PANEL.</p><h2>Make the infra.<br/><em>Keep the freedom.</em></h2><p>Help build an open-source infrastructure compiler that understands application intent, respects explicit choices, and never holds your stack hostage.</p><div class="end-actions"><a class="button button-primary" href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">Explore on GitHub <span>↗</span></a><a class="button button-outline" href="#architecture">Revisit the architecture <span>↑</span></a></div><div class="end-bottom"><span>NO MANDATORY SAAS</span><span>PORTABLE INTENT</span><span>OWN YOUR OUTPUT</span></div></div></section>
   </main>
-  <footer class="footer container"><a class="brand footer-brand" href="#top"><img class="brand-mark" src="assets/favicon.svg?v=star" width="34" height="34" alt="" /><span>magic<span class="brand-divider">/</span>infra</span></a><p>Infrastructure that gets your code.<br/>An open-source project in planning.</p><div class="footer-right"><a href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#top">Back to top ↑</a><button class="motion-toggle" type="button" aria-pressed="false">Pause animations</button><span>© 2026 magic-infra</span></div></footer>
+  <footer class="footer container"><a class="brand footer-brand" href="#top"><img class="brand-mark" src="assets/favicon.svg?v=star" width="34" height="34" alt="" /><span>magic<span class="brand-divider">/</span>infra</span></a><p>Infrastructure that gets your code.<br/>An open-source project in development.</p><div class="footer-right"><a href="https://github.com/christian-draeger/magic-infra" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#top">Back to top ↑</a><button class="motion-toggle" type="button" aria-pressed="false">Pause animations</button><span>© 2026 magic-infra</span></div></footer>
 </body>
 </html>

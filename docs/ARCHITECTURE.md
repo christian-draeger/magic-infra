@@ -14,7 +14,7 @@ Input validation → resolver + policy  ←  infra.yaml
 Target planner  ←  backend capabilities + target settings
   │  Deployment Plan (target-specific preview)
   ▼
-Backend renderer → Compose files or Kubernetes manifests
+Backend renderer → Compose files, Kubernetes manifests or a NixOS module (planned)
   │
   ▼
 Your deployment workflow
@@ -67,6 +67,11 @@ The renderer consumes the plan and emits ordinary files: a PostgreSQL service
 and named volume for Compose, or a CloudNativePG Cluster manifest on Kubernetes,
 where the operator manages the underlying storage. App bindings refer to the
 chosen credentials without embedding their values.
+
+The [planned NixOS target](ROADMAP.md#planned-target-after-m3-nixos-on-a-vps)
+uses the same resource intent to render an importable app module for a single
+host. The backend describes its host and runtime prerequisites in the plan.
+The operator supplies the host configuration and owns activation.
 
 Compilation can run without applying to a cluster or building an image.
 Identical inputs, versions and target settings should yield the same files.
