@@ -170,8 +170,11 @@ ${sql.prependIndent("              ")}
             authentication = config.services.postgresql.authentication;
             authenticationFileMatches = (config.services.postgresql.settings.hba_file or "") ==
               toString (pkgs.writeText "pg_hba.conf" authentication);
-            # PostgreSQL joins continued lines before discarding comments.
-            logicalRules = builtins.replaceStrings [ "\\\r\n" "\\\n" ] [ "" "" ] authentication;
+            # PostgreSQL removes trailing CRs and joins continued lines before discarding comments.
+            physicalRules = lib.splitString "\n" authentication;
+            stripTrailingCR = line: builtins.head (builtins.match "((.*[^\r])?)\r*" line);
+            logicalRules = builtins.replaceStrings [ "\\\n" ] [ "" ]
+              (lib.concatStringsSep "\n" (map stripTrailingCR physicalRules));
             activeRules = lib.filter (line: line != "" && !lib.hasPrefix "#" line)
               (map lib.trim (lib.splitString "\n" logicalRules));
             takeWhile = predicate: lines:
