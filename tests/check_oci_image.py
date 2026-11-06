@@ -106,9 +106,10 @@ def note_request(address, method, status, body=None):
 
 
 def assert_password_absent(compose, password, env=None):
-    logs = subprocess.run((*compose, "logs", "--no-color"), check=True, text=True, capture_output=True,
+    logs = subprocess.run((*compose, "logs", "--no-color"), text=True, capture_output=True,
                           timeout=30, env=env)
-    assert password not in logs.stdout + logs.stderr
+    assert logs.returncode == 0, f"Could not collect Compose logs (exit {logs.returncode})."
+    assert password not in logs.stdout + logs.stderr, "Compose logs exposed the fixture password."
 
 
 def check_compose(docker, evidence, declaration, service, suffix):
