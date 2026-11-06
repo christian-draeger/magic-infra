@@ -44,15 +44,17 @@ internal object DeploymentPlanPreview {
             }
         }
         val resources = model.path("resources")
-        if (target == DeploymentTarget.NIXOS && !resources.isEmpty) {
-            throw EvidenceRejected("MI_NIXOS_RESOURCE_UNSUPPORTED",
-                "The initial NixOS target renders OCI apps without resource bindings. Select Compose for PostgreSQL.", 4)
-        }
         val managed = resources.any { it.path("management").asText() == "managed" }
-        val operations = if (target == DeploymentTarget.NIXOS) model.path("services").map { service ->
+        if (target == DeploymentTarget.NIXOS && managed) {
+            throw EvidenceRejected("MI_NIXOS_RESOURCE_UNSUPPORTED",
+                "NixOS currently supports external PostgreSQL. Select Compose for managed PostgreSQL.", 4)
+        }
+        val app = model.path("application").path("id").asText()
+        val workloads = if (target == DeploymentTarget.NIXOS) model.path("services").map { service ->
             val id = service.path("id").asText()
             operation("create", id, "low", "Configure the Podman container for service $id when activated.")
-        } else resources.map { resource ->
+        } else emptyList()
+        val operations = workloads + resources.map { resource ->
             val id = resource.path("id").asText()
             if (resource.path("management").asText() == "managed") {
                 operation("create", id, "moderate", "Create PostgreSQL with retained storage when deployed.")
@@ -78,16 +80,22 @@ internal object DeploymentPlanPreview {
                 val id = resource.path("id").asText()
                 val connection = resource.path("connection")
                 val secretRef = connection.path("secretRef").asText()
-                add(prerequisite("credentials-$id", "Provide credentials reference $secretRef for resource $id."))
+                val credentials = if (target == DeploymentTarget.NIXOS) {
+                    "Supply SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD in ${nixosCredentialsPath(app, environment, secretRef)} at runtime."
+                } else "Provide credentials reference $secretRef for resource $id."
+                add(prerequisite("credentials-$id", credentials))
                 if (connection.has("endpointRef")) {
                     val endpointRef = connection.path("endpointRef").asText()
-                    add(prerequisite("endpoint-$id", "Provide external JDBC endpoint reference $endpointRef for resource $id."))
+                    val endpoint = if (target == DeploymentTarget.NIXOS) {
+                        "Supply SPRING_DATASOURCE_URL in ${nixosEndpointPath(app, environment, endpointRef)} at runtime."
+                    } else "Provide external JDBC endpoint reference $endpointRef for resource $id."
+                    add(prerequisite("endpoint-$id", endpoint))
                 }
             }
         }
         val document = mapper.valueToTree<JsonNode>(linkedMapOf(
             "schemaVersion" to "plan/v1alpha1",
-            "applicationId" to model.path("application").path("id").asText(),
+            "applicationId" to app,
             "target" to mapOf("backend" to target.id, "environment" to environment),
             "mode" to "compile-preview",
             "operations" to operations,
