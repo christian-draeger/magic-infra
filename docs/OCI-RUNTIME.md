@@ -25,12 +25,17 @@ Use JDK 21, Gradle 8.5 and a local Docker engine. The fixture has Spring Boot
 ```sh
 gradle -p examples/compose-app bootJar
 docker build -t magic-infra-compose-app:fixture examples/compose-app
-docker run --rm -p 127.0.0.1:8080:8080 magic-infra-compose-app:fixture
+docker run --rm -p 127.0.0.1:8080:8080 \
+  -e SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration \
+  magic-infra-compose-app:fixture
 ```
 
 Check `http://127.0.0.1:8080/actuator/health`. The
 [fixture declaration](../examples/compose-app/infra.yaml) records the same
-image and runtime settings. `python tests/check_oci_image.py` runs a smoke
+image and runtime settings. The standalone command checks the image and
+HTTP readiness with database auto-configuration disabled. The
+[Compose test](COMPOSE.md#verify-the-fixture) exercises the database.
+`python tests/check_oci_image.py` runs a smoke
 test with an isolated tag, container name and loopback port on a local
 Unix-socket Docker context. Build the
 compiler launcher first with `gradle :evidence-check:installDist`.

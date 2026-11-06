@@ -42,15 +42,28 @@ Compose CLI and use credentials for the existing database.
 
 ## Verify the fixture
 
+From the repository root, use JDK 21, Gradle 8.5 and Python 3.12 or later.
+Select a local Docker context backed by a Unix socket, with BuildKit and
+Docker Compose 2.30 or later available.
+
 ```sh
 gradle :evidence-check:installDist
+python -m pip install -r tests/requirements.txt
 python tests/check_oci_image.py --with-compose
 ```
 
 The smoke test builds the real Spring image separately, validates
 generated Compose, starts an isolated managed stack, and waits for
-PostgreSQL and Spring health. It validates the external variant without
-contacting its database.
+PostgreSQL and Spring health. It creates, reads and updates a note through
+HTTP, recreates both containers and reads the same note from the volume.
+It also runs the app with an external binding to that existing database,
+then deletes the note and verifies the missing response. The test shares
+the database's temporary network only for this external check.
+
+The fixture compares the generated plan and Compose file with
+[committed snapshots](../examples/compose-app/expected/). An undecided
+declaration must stop before emitting Compose. The Spring integration suite
+also compiles Compose from real Java adapter Evidence.
 
 The managed volume survives ordinary container replacement and
 `docker compose down`. An explicit `docker compose down --volumes`

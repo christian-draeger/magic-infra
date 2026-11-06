@@ -1,0 +1,47 @@
+{
+  "schemaVersion" : "plan/v1alpha1",
+  "applicationId" : "compose-app",
+  "target" : {
+    "backend" : "docker-compose",
+    "environment" : "dev"
+  },
+  "mode" : "compile-preview",
+  "operations" : [ {
+    "id" : "create-primary-db",
+    "resourceId" : "primary-db",
+    "action" : "create",
+    "risk" : "moderate",
+    "description" : "Create PostgreSQL with retained storage when deployed.",
+    "requiresApproval" : false
+  }, {
+    "id" : "bind-compose-app",
+    "resourceId" : "compose-app",
+    "action" : "bind",
+    "risk" : "low",
+    "description" : "Bind service compose-app to PostgreSQL resource primary-db.",
+    "requiresApproval" : false
+  } ],
+  "prerequisites" : [ {
+    "id" : "compose-v2",
+    "description" : "Provide a Docker engine with Compose 2.30 or later.",
+    "required" : true
+  }, {
+    "id" : "image-compose-app",
+    "description" : "Make image magic-infra-compose-app:fixture available for service compose-app.",
+    "required" : true
+  }, {
+    "id" : "credentials-primary-db",
+    "description" : "Provide credentials reference fixture-db for resource primary-db.",
+    "required" : true
+  } ],
+  "artifacts" : [ {
+    "path" : "compose.yaml",
+    "kind" : "compose-manifest"
+  } ],
+  "diagnostics" : [ {
+    "code" : "MI_SPRING_CONFIG_CUSTOM_SOURCES_UNKNOWN",
+    "severity" : "info",
+    "message" : "Application-defined property sources and runtime environment overrides were not evaluated."
+  } ],
+  "limitations" : [ "Compilation preview. No deployed state was read.", "Compose does not enforce the declared storage size.", "Single-host Compose cannot provide host failover." ]
+}

@@ -5,5 +5,14 @@ services:
     imageRef: magic-infra-compose-app:fixture
     port: 8080
     healthPath: /actuator/health
-resources: {}
-bindings: []
+resources:
+  primary-db:
+    kind: postgresql
+    management: managed
+    deletionPolicy: retain
+    database: fixture
+    secretRef: fixture-db
+    storageSize: 1Gi
+bindings:
+  - serviceId: compose-app
+    resourceId: primary-db

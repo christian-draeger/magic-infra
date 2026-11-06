@@ -568,6 +568,9 @@ def check_bytecode(gradle):
             assert model["services"][0]["source"]["module"] == ":java-app"
             assert model["resources"][0]["management"] == "external"
             assert "f-config-url" in model["provenance"][0]["findingIds"]
+            compose = yaml.safe_load(success(invoke([READER, "generate", path, declaration])))
+            assert set(compose["services"]) == {"java-app"}
+            assert compose["services"]["java-app"]["environment"]["SPRING_DATASOURCE_URL"] == "${SHOP_DB_URL:?Set SHOP_DB_URL}"
     print("Java/Kotlin JVM annotation, conditional bean and provenance checks passed.")
 
 
