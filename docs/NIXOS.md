@@ -42,17 +42,19 @@ The NixOS plan names two runtime env files on the host. For application
 | `/run/secrets/magic-infra/shop_dev/shop-db-credentials.env` | `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` |
 | `/run/secrets/magic-infra/shop_dev/endpoints/SHOP_DB_URL.env` | `SPRING_DATASOURCE_URL` |
 
-Use one non-empty `KEY=value` assignment per line, with LF line endings.
-Each file accepts only its listed keys. Keep credentials separate from the
-JDBC URL. Have your secret provider create the files on the host before
+Use one non-empty `KEY=value` assignment per line, with LF line endings and
+at most 8192 bytes per line. Each file accepts only its listed keys. Supply
+a `jdbc:postgresql:` URL and keep credentials separate from it. Have your
+secret provider create the files on the host before
 starting the workload, with access limited to the Podman service user.
 The service checks for missing or malformed files before starting the app.
 Its diagnostics name the file and expected keys.
 
 The generated module references those files as strings. Podman reads them
 at runtime. The module does not copy their contents into the Nix store or
-manage the external database. After changing the files, restart the Podman
-service to load the new values.
+manage the external database. After changing the files, restart the app's
+systemd unit to load the new values, for example
+`podman-magic-infra-shop_dev_api.service`.
 
 ## Verify the module import
 
