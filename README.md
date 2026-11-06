@@ -1,12 +1,13 @@
 # magic-infra
 
-Self-hosted, code-first infrastructure compiler for Docker and Kubernetes.
+Self-hosted, code-first infrastructure compiler.
 
 magic-infra combines application evidence with explicit resource intent
 to produce deployment files you can inspect, version, and run yourself.
 The first verified slice analyzes Spring Boot and renders PostgreSQL
 stacks for Docker Compose. Kubernetes/K3s follows using the same
-Application Model.
+Application Model, with a [planned NixOS target](docs/ROADMAP.md#planned-target-after-m3-nixos-on-a-vps)
+for a single VPS.
 
 - [Explore the product preview](https://christian-draeger.github.io/magic-infra/)
 - [Read the product vision and ecosystem comparison](docs/PRODUCT.md)

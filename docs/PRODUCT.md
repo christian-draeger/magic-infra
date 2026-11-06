@@ -5,19 +5,20 @@ The app code is the source of truth for what the app needs and how its services
 connect. magic-infra reads those signals, asks for decisions the code cannot
 make, and generates deployment files you can review, run and own. Each
 framework adapter reports its findings through a shared Evidence contract,
-so new adapters can use the same compiler and deployment backends. Spring Boot
-is the first planned adapter; a Next.js pilot will test that boundary.
+so new adapters can use the same compiler and deployment backends. The Spring
+Boot adapter is verified on the first Compose slice. A planned Next.js pilot
+will test that boundary with another framework.
 
-The compiler and integrations described here are design goals. The same
-application model should cover three starting points:
+The product roadmap covers three starting points with the same application
+model:
 
 - **Local Compose:** Give yourself or a teammate a repeatable dev stack with
   the app and its dependencies, without hand-writing the Compose file.
 - **Compose on a VPS:** Ship that app to your own server with reviewable
   services, volumes and secret references. For a NixOS server, see the
   [planned NixOS target](#nixos-on-your-vps).
-- **An existing Kubernetes cluster:** Add a service, bind infrastructure you
-  already operate, and review changes to generated manifests as the app evolves.
+- **An existing Kubernetes cluster (planned):** Add a service, bind infrastructure
+  you already operate, and review changes to manifests as the app evolves.
 
 The [first user journey](FIRST-USER.md) defines what the initial Compose slice
 must demonstrate.
