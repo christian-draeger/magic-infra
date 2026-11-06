@@ -335,6 +335,7 @@ def check_compose_renderer():
         command = [READER, "generate", evidence_path, directory / f"{mode}.yaml"]
         output = success(invoke(command))
         assert output == success(invoke(command))
+        assert output == success(invoke(command + ["--target", "docker-compose"]))
         compose = yaml.safe_load(output)
         assert compose["name"] == "shop_dev"
         app = compose["services"]["api"]
@@ -364,6 +365,25 @@ def check_compose_renderer():
             names.append(yaml.safe_load(output)["name"])
     assert names == ["shop-dev_blue", "shop_dev-blue"]
     print("Compose artifact repeatability, managed/external ownership and host-failover checks passed.")
+
+
+def check_nixos_renderer():
+    fixture = ROOT / "examples/nixos-app"
+    inputs = [fixture / "evidence.json", fixture / "infra.yaml"]
+    for action, name in (("plan", "plan.json"), ("generate", "magic-infra.nix")):
+        command = [READER, action, *inputs, "--target", "nixos"]
+        output = success(invoke(command))
+        assert output == (fixture / "expected" / name).read_bytes()
+        assert output == success(invoke(command + ["dev"]))
+        assert output == success(invoke([READER, action, *inputs, "dev", "--target", "nixos"]))
+        rejected(invoke(command + ["--require-host-failover"]), 4, "MI_NIXOS_HOST_FAILOVER", "multiple hosts")
+        for mode in ("managed", "external"):
+            rejected(invoke([READER, action, ROOT / "examples/m0/evidence.json",
+                             ROOT / f"examples/infra/{mode}.yaml", "--target", "nixos"]),
+                     4, "MI_NIXOS_RESOURCE_UNSUPPORTED", "Select Compose for PostgreSQL")
+    validate_schema(read_json(fixture / "expected/plan.json"), "plan")
+    rejected(invoke([READER, "generate", *inputs, "--target", "kubernetes"]), 2, "MI_EVIDENCE_USAGE", "nixos")
+    print("NixOS plan, module repeatability, resource rejection and capability checks passed.")
 
 
 def check_config():
@@ -612,6 +632,7 @@ if __name__ == "__main__":
     check_application_model()
     check_plan_preview()
     check_compose_renderer()
+    check_nixos_renderer()
     if not args.protocol_only:
         check_gradle(args.gradle)
         check_bytecode(args.gradle)

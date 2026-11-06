@@ -5,6 +5,17 @@ import com.fasterxml.jackson.databind.json.JsonMapper
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.dialect.Dialects
 
+internal enum class DeploymentTarget(
+    val id: String,
+    val label: String,
+    val diagnosticPrefix: String,
+    val artifactPath: String,
+    val artifactKind: String,
+) {
+    COMPOSE("docker-compose", "Compose", "COMPOSE", "compose.yaml", "compose-manifest"),
+    NIXOS("nixos", "NixOS", "NIXOS", "magic-infra.nix", "nixos-module"),
+}
+
 internal object DeploymentPlanPreview {
     private val environmentId = Regex("[a-z][a-z0-9-]{0,62}")
     private val mapper = JsonMapper.builder().build()
@@ -15,7 +26,7 @@ internal object DeploymentPlanPreview {
         }
     }
 
-    fun plan(model: JsonNode, evidence: JsonNode, environment: String): JsonNode {
+    fun plan(model: JsonNode, evidence: JsonNode, environment: String, target: DeploymentTarget): JsonNode {
         if (!environmentId.matches(environment)) {
             throw EvidenceRejected("MI_PLAN_ENVIRONMENT", "Use a lowercase environment ID such as dev.")
         }
@@ -28,13 +39,20 @@ internal object DeploymentPlanPreview {
         for (service in model.path("services")) {
             val port = service.path("runtime").path("port").asInt()
             if (!ports.add(port)) {
-                throw EvidenceRejected("MI_COMPOSE_PORT_CONFLICT",
-                    "Set distinct ports for services on the Compose host. Port $port is already used in this model.", 4)
+                throw EvidenceRejected("MI_${target.diagnosticPrefix}_PORT_CONFLICT",
+                    "Set distinct ports for services on the ${target.label} host. Port $port is already used in this model.", 4)
             }
         }
         val resources = model.path("resources")
+        if (target == DeploymentTarget.NIXOS && !resources.isEmpty) {
+            throw EvidenceRejected("MI_NIXOS_RESOURCE_UNSUPPORTED",
+                "The initial NixOS target renders OCI apps without resource bindings. Select Compose for PostgreSQL.", 4)
+        }
         val managed = resources.any { it.path("management").asText() == "managed" }
-        val operations = resources.map { resource ->
+        val operations = if (target == DeploymentTarget.NIXOS) model.path("services").map { service ->
+            val id = service.path("id").asText()
+            operation("create", id, "low", "Configure the Podman container for service $id when activated.")
+        } else resources.map { resource ->
             val id = resource.path("id").asText()
             if (resource.path("management").asText() == "managed") {
                 operation("create", id, "moderate", "Create PostgreSQL with retained storage when deployed.")
@@ -47,7 +65,10 @@ internal object DeploymentPlanPreview {
             operation("bind", serviceId, "low", "Bind service $serviceId to PostgreSQL resource $resourceId.")
         }
         val prerequisites = buildList {
-            add(prerequisite("compose-v2", "Provide a Docker engine with Compose 2.30 or later."))
+            add(when (target) {
+                DeploymentTarget.COMPOSE -> prerequisite("compose-v2", "Provide a Docker engine with Compose 2.30 or later.")
+                DeploymentTarget.NIXOS -> prerequisite("nixos-podman", "Import the module on a NixOS host with Podman as its OCI backend.")
+            })
             for (service in model.path("services")) {
                 val id = service.path("id").asText()
                 val image = service.path("build").path("imageRef").asText()
@@ -67,16 +88,17 @@ internal object DeploymentPlanPreview {
         val document = mapper.valueToTree<JsonNode>(linkedMapOf(
             "schemaVersion" to "plan/v1alpha1",
             "applicationId" to model.path("application").path("id").asText(),
-            "target" to mapOf("backend" to "docker-compose", "environment" to environment),
+            "target" to mapOf("backend" to target.id, "environment" to environment),
             "mode" to "compile-preview",
             "operations" to operations,
             "prerequisites" to prerequisites,
-            "artifacts" to listOf(mapOf("path" to "compose.yaml", "kind" to "compose-manifest")),
+            "artifacts" to listOf(mapOf("path" to target.artifactPath, "kind" to target.artifactKind)),
             "diagnostics" to diagnostics,
             "limitations" to buildList {
                 add("Compilation preview. No deployed state was read.")
                 if (managed) add("Compose does not enforce the declared storage size.")
-                add("Single-host Compose cannot provide host failover.")
+                if (target == DeploymentTarget.NIXOS) add("Application health requires an external probe.")
+                add("Single-host ${target.label} cannot provide host failover.")
             },
         ))
         if (schema.validate(document).isNotEmpty()) {

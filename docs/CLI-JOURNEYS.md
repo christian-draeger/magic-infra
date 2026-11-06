@@ -11,6 +11,7 @@ In the examples below, `evidence-check` refers to the launcher under
 | Explain | `evidence-check explain evidence.json` shows inferred bindings and conflicts with rule and finding IDs. |
 | Plan | `evidence-check plan evidence.json infra.yaml dev` emits a versioned Compose preview. The environment defaults to `dev`. |
 | Generate | `evidence-check generate evidence.json infra.yaml dev` emits the [Compose file](COMPOSE.md) to stdout. Redirect it to the output directory you want to review. |
+| Select NixOS | Add `--target nixos` to `plan` or `generate` for a prebuilt app without resource bindings. The [NixOS module](NIXOS.md) imports into an existing host configuration. |
 
 `plan` reads only the two inputs. It outputs anticipated actions,
 prerequisites and relative artifact paths, including `compose.yaml`. It
@@ -42,5 +43,6 @@ no partial JSON document.
 | `3` | Unsupported contract version |
 | `4` | Unresolved binding, conflicting Evidence or adapter errors |
 
-The first plan targets one Compose host. Kubernetes planning and
-state-aware comparisons have separate roadmap milestones.
+Compose is the default target. Compose and NixOS each target one host and
+reject `--require-host-failover`. Kubernetes planning and state-aware
+comparisons have separate roadmap milestones.
