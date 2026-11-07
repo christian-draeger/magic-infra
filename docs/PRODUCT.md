@@ -26,15 +26,16 @@ must demonstrate.
 ## NixOS on your VPS
 
 For a single server, NixOS lets you keep app services and host settings in
-one declarative configuration. The first backend slice generates an app
+one declarative configuration. The NixOS target generates an app
 module from the same Application Model. Review it in Git and import it alongside
 your existing host settings. You decide when to activate it with your NixOS
 workflow. System generations let you revert configuration changes. Backups
 and PostgreSQL migrations have their own recovery process.
 
-The PostgreSQL spike uses a prebuilt app image and native PostgreSQL. A later
-systemd mode would run a versioned app package directly. See the
-[roadmap](ROADMAP.md#nixos-on-a-vps) and the
+The generated module runs a prebuilt app image on Podman and can provision
+native PostgreSQL or connect to an existing database. A later systemd mode
+would run a versioned app package directly. See the [NixOS guide](NIXOS.md)
+and the
 [NixOS configuration guide](https://nixos.org/manual/nixos/stable/#sec-changing-config).
 
 ## What makes it magic

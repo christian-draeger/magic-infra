@@ -45,9 +45,15 @@ internal object DeploymentPlanPreview {
         }
         val resources = model.path("resources")
         val managed = resources.any { it.path("management").asText() == "managed" }
-        if (target == DeploymentTarget.NIXOS && managed) {
-            throw EvidenceRejected("MI_NIXOS_RESOURCE_UNSUPPORTED",
-                "NixOS currently supports external PostgreSQL. Select Compose for managed PostgreSQL.", 4)
+        if (target == DeploymentTarget.NIXOS) {
+            val databases = mutableSetOf<String>()
+            for (resource in resources.filter { it.path("management").asText() == "managed" }) {
+                val database = resource.path("settings").path("database").asText()
+                if (!databases.add(database)) {
+                    throw EvidenceRejected("MI_NIXOS_DATABASE_CONFLICT",
+                        "Declare a distinct name for each managed database on the NixOS host. Database $database is already used in this model.", 4)
+                }
+            }
         }
         val app = model.path("application").path("id").asText()
         val workloads = if (target == DeploymentTarget.NIXOS) model.path("services").map { service ->
@@ -57,7 +63,10 @@ internal object DeploymentPlanPreview {
         val operations = workloads + resources.map { resource ->
             val id = resource.path("id").asText()
             if (resource.path("management").asText() == "managed") {
-                operation("create", id, "moderate", "Create PostgreSQL with retained storage when deployed.")
+                val description = if (target == DeploymentTarget.NIXOS) {
+                    "Provision a retained database and dedicated role in the host's native PostgreSQL service."
+                } else "Create PostgreSQL with retained storage when deployed."
+                operation("create", id, "moderate", description)
             } else {
                 operation("reference", id, "low", "Use the existing PostgreSQL endpoint reference.")
             }
@@ -81,7 +90,11 @@ internal object DeploymentPlanPreview {
                 val connection = resource.path("connection")
                 val secretRef = connection.path("secretRef").asText()
                 val credentials = if (target == DeploymentTarget.NIXOS) {
-                    "Supply SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD in ${nixosCredentialsPath(app, environment, secretRef)} at runtime."
+                    val managedResource = resource.path("management").asText() == "managed"
+                    val keys = if (managedResource) "SPRING_DATASOURCE_PASSWORD"
+                    else "SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD"
+                    val path = nixosCredentialsPath(app, environment, secretRef, managed = managedResource)
+                    "Supply $keys in $path at runtime."
                 } else "Provide credentials reference $secretRef for resource $id."
                 add(prerequisite("credentials-$id", credentials))
                 if (connection.has("endpointRef")) {
@@ -104,7 +117,11 @@ internal object DeploymentPlanPreview {
             "diagnostics" to diagnostics,
             "limitations" to buildList {
                 add("Compilation preview. No deployed state was read.")
-                if (managed) add("Compose does not enforce the declared storage size.")
+                if (managed) add("${target.label} does not enforce the declared storage size.")
+                if (managed && target == DeploymentTarget.NIXOS) {
+                    add("Managed PostgreSQL requires a native host listener on IPv4 loopback and rootful Podman bridge networking.")
+                    add("NixOS configuration rollback does not roll back database contents or migrations.")
+                }
                 if (target == DeploymentTarget.NIXOS) add("Application health requires an external probe.")
                 add("Single-host ${target.label} cannot provide host failover.")
             },
